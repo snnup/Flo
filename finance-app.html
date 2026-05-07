@@ -25,7 +25,10 @@
     </div>
     <div class="form-group">
       <label>Senha</label>
-      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+      <div style="position:relative;display:flex;align-items:center;">
+        <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" style="flex:1;">
+        <button type="button" class="password-toggle" onclick="togglePasswordVisibility('login-pass', this)" title="Mostrar/Esconder senha" style="position:absolute;right:12px;background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--text-muted);padding:6px;display:flex;align-items:center;justify-content:center;">👀</button>
+      </div>
       <p class="form-error" id="login-pass-err">Senha deve conter pelo menos 8 caracteres.</p>
     </div>
     <div class="form-group" style="display:flex;align-items:center;gap:8px;margin:12px 0;">
@@ -54,8 +57,25 @@
     </div>
     <div class="form-group">
       <label>Senha</label>
-      <input type="password" id="signup-pass" placeholder="Min. 8 characters">
-      <p class="form-error" id="signup-pass-err">Senha deve conter pelo menos 8 caracteres.</p>
+      <div style="position:relative;display:flex;align-items:center;">
+        <input type="password" id="signup-pass" placeholder="Min. 8 characters" style="flex:1;" oninput="updatePasswordValidator()">
+        <button type="button" class="password-toggle" onclick="togglePasswordVisibility('signup-pass', this)" title="Mostrar/Esconder senha" style="position:absolute;right:12px;background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--text-muted);padding:6px;display:flex;align-items:center;justify-content:center;">👀</button>
+      </div>
+      <div id="password-validator" style="margin-top:8px;display:none;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:0.75rem;">
+        <div style="display:flex;align-items:center;gap:6px;margin:4px 0;" id="validator-length">
+          <span id="check-length" style="color:var(--text-muted);">○</span> 8 caracteres mínimo
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin:4px 0;" id="validator-upper">
+          <span id="check-upper" style="color:var(--text-muted);">○</span> 1 letra maiúscula
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin:4px 0;" id="validator-number">
+          <span id="check-number" style="color:var(--text-muted);">○</span> 1 número
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin:4px 0;" id="validator-special">
+          <span id="check-special" style="color:var(--text-muted);">○</span> 1 caractere especial (!%&@#$*?_)
+        </div>
+      </div>
+      <p class="form-error" id="signup-pass-err" style="margin-top:8px;"></p>
     </div>
     <p class="form-error" id="signup-general-err" style="margin-bottom:8px;"></p>
     <button class="btn btn-primary" onclick="handleSignup()">Crie uma conta →</button>

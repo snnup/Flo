@@ -95,6 +95,63 @@ function getCatIcon(cat, type) {
   return icons[cat] || (type === 'income' ? '💰' : '💸');
 }
 
+// ─── PASSWORD VALIDATION ───────────────────────────────
+function validatePassword(pass) {
+  const minLength = pass.length >= 8;
+  const hasUpperCase = /[A-Z]/.test(pass);
+  const hasNumber = /\d/.test(pass);
+  const hasSpecial = /[!%&@#$*?_]/.test(pass);
+  
+  return {
+    isValid: minLength && hasUpperCase && hasNumber && hasSpecial,
+    minLength,
+    hasUpperCase,
+    hasNumber,
+    hasSpecial
+  };
+}
+
+function togglePasswordVisibility(inputId, btn) {
+  const input = document.getElementById(inputId);
+  const isPassword = input.type === 'password';
+  input.type = isPassword ? 'text' : 'password';
+  btn.textContent = isPassword ? '🙈' : '👀';
+  btn.style.color = isPassword ? 'var(--income)' : 'var(--text-muted)';
+}
+
+function updatePasswordValidator() {
+  const pass = document.getElementById('signup-pass').value;
+  const validator = document.getElementById('password-validator');
+  
+  if (pass.length === 0) {
+    validator.style.display = 'none';
+    return;
+  }
+  
+  validator.style.display = 'block';
+  const result = validatePassword(pass);
+  
+  // Update indicators
+  updateValidatorCheck('check-length', result.minLength);
+  updateValidatorCheck('check-upper', result.hasUpperCase);
+  updateValidatorCheck('check-number', result.hasNumber);
+  updateValidatorCheck('check-special', result.hasSpecial);
+}
+
+function updateValidatorCheck(checkId, isValid) {
+  const checkEl = document.getElementById(checkId);
+  const parentEl = checkEl.parentElement;
+  if (isValid) {
+    checkEl.textContent = '✓';
+    checkEl.style.color = 'var(--income)';
+    parentEl.style.color = 'var(--income)';
+  } else {
+    checkEl.textContent = '✕';
+    checkEl.style.color = 'var(--expense)';
+    parentEl.style.color = 'var(--text-muted)';
+  }
+}
+
 // ─── AUTH ─────────────────────────────────────────────
 function showLogin() {
   document.getElementById('login-email').value = '';
@@ -108,6 +165,7 @@ function showSignup() {
   document.getElementById('signup-name').value = '';
   document.getElementById('signup-email').value = '';
   document.getElementById('signup-pass').value = '';
+  document.getElementById('password-validator').style.display = 'none';
   document.getElementById('login-card').style.display = 'none';
   document.getElementById('signup-card').style.display = 'block';
 }
@@ -145,7 +203,21 @@ function handleSignup() {
 
   if (!name) { show('signup-name-err'); valid = false; }
   if (!email || !/\S+@\S+\.\S+/.test(email)) { show('signup-email-err'); valid = false; }
-  if (pass.length < 8) { show('signup-pass-err'); valid = false; }
+  
+  // Validate password with new rules
+  const passValidation = validatePassword(pass);
+  if (!passValidation.isValid) {
+    let errorMsg = 'Sua senha deve ter: ';
+    const missing = [];
+    if (!passValidation.minLength) missing.push('8+ caracteres');
+    if (!passValidation.hasUpperCase) missing.push('1 letra maiúscula');
+    if (!passValidation.hasNumber) missing.push('1 número');
+    if (!passValidation.hasSpecial) missing.push('1 caractere especial');
+    errorMsg += missing.join(', ');
+    showErr('signup-pass-err', errorMsg);
+    valid = false;
+  }
+  
   if (!valid) return;
 
   if (state.users.find(u => u.email === email)) { showErr('signup-general-err', 'Email already registered.'); return; }
@@ -167,6 +239,8 @@ function handleLogout() {
   document.getElementById('login-email').value = '';
   document.getElementById('login-pass').value = '';
   document.getElementById('login-remember').checked = false;
+  document.getElementById('signup-pass').value = '';
+  document.getElementById('password-validator').style.display = 'none';
 }
 
 function showApp() {
