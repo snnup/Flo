@@ -31,16 +31,25 @@ function load() {
   if (cu) state.currentUser = JSON.parse(cu);
 }
 
+// ─── USER TRANSACTIONS HELPER ────────────────────────
+function getUserTransactions() {
+  if (!state.currentUser) return [];
+  return state.transactions.filter(t => t.userId === state.currentUser.id);
+}
+
 // ─── INIT ─────────────────────────────────────────────
 load();
 if (state.darkMode) document.body.classList.add('dark');
 updateThemeIcon();
 
-if (state.currentUser) {
+const rememberMe = localStorage.getItem('flo_remember') === 'true';
+if (state.currentUser && rememberMe) {
 setTimeout(() => {
   showApp();
 }, 50);
 } else {
+  state.currentUser = null;
+  localStorage.removeItem('flo_current');
   document.getElementById('auth-screen').style.display = 'flex';
 }
 
@@ -88,11 +97,17 @@ function getCatIcon(cat, type) {
 
 // ─── AUTH ─────────────────────────────────────────────
 function showLogin() {
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-pass').value = '';
+  if (document.getElementById('login-remember')) document.getElementById('login-remember').checked = false;
   document.getElementById('login-card').style.display = 'block';
   document.getElementById('signup-card').style.display = 'none';
 }
 
 function showSignup() {
+  document.getElementById('signup-name').value = '';
+  document.getElementById('signup-email').value = '';
+  document.getElementById('signup-pass').value = '';
   document.getElementById('login-card').style.display = 'none';
   document.getElementById('signup-card').style.display = 'block';
 }
@@ -100,19 +115,23 @@ function showSignup() {
 function handleLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-pass').value;
+  const rememberMe = document.getElementById('login-remember').checked;
   let valid = true;
 
   hide('login-email-err'); hide('login-pass-err'); hide('login-general-err');
 
   if (!email || !/\S+@\S+\.\S+/.test(email)) { show('login-email-err'); valid = false; }
-  if (pass.length < 6) { show('login-pass-err'); valid = false; }
+  if (pass.length < 8) { show('login-pass-err'); valid = false; }
   if (!valid) return;
 
   const user = state.users.find(u => u.email === email && u.password === pass);
   if (!user) { showErr('login-general-err', 'Invalid email or password.'); return; }
 
   state.currentUser = user;
-  localStorage.setItem('flo_current', JSON.stringify(user));
+  localStorage.setItem('flo_remember', rememberMe.toString());
+  if (rememberMe) {
+    localStorage.setItem('flo_current', JSON.stringify(user));
+  }
   showApp();
 }
 
@@ -126,7 +145,7 @@ function handleSignup() {
 
   if (!name) { show('signup-name-err'); valid = false; }
   if (!email || !/\S+@\S+\.\S+/.test(email)) { show('signup-email-err'); valid = false; }
-  if (pass.length < 6) { show('signup-pass-err'); valid = false; }
+  if (pass.length < 8) { show('signup-pass-err'); valid = false; }
   if (!valid) return;
 
   if (state.users.find(u => u.email === email)) { showErr('signup-general-err', 'Email already registered.'); return; }
@@ -142,10 +161,12 @@ function handleSignup() {
 function handleLogout() {
   state.currentUser = null;
   localStorage.removeItem('flo_current');
+  localStorage.removeItem('flo_remember');
   document.getElementById('app-screen').classList.remove('active');
   document.getElementById('auth-screen').style.display = 'flex';
   document.getElementById('login-email').value = '';
   document.getElementById('login-pass').value = '';
+  document.getElementById('login-remember').checked = false;
 }
 
 function showApp() {
@@ -235,7 +256,7 @@ function openEditModal(id) {
   // fecha modal de listagem
   closeModal('all-modal');
 
-  const tx = state.transactions.find(t => t.id === id);
+  const tx = getUserTransactions().find(t => t.id === id);
 
   if (!tx) return;
 
@@ -288,7 +309,7 @@ function saveTx() {
       toast('Transaction updated!', 'success');
     }
   } else {
-    state.transactions.push({ id: Date.now(), desc, amount, category, date, time, type: currentTxType });
+    state.transactions.push({ id: Date.now(), desc, amount, category, date, time, type: currentTxType, userId: state.currentUser.id });
     toast(`${currentTxType === 'income' ? 'Income' : 'Expense'} added!`, 'success');
   }
 
@@ -300,25 +321,39 @@ function saveTx() {
   if (document.getElementById('all-modal').classList.contains('open')) renderAllTx();
 }
 
+// Global variable to hold the ID to delete after confirmation
+let deleteIdToConfirm = null;
+
 function deleteTx(id) {
-  state.transactions = state.transactions.filter(t => t.id !== id);
-  toast('Transaction deleted!', 'success');
-  save();
-  updateDashboard();
-  updateChart();
-  renderAllTx();
+  currentDeleteType = 'transaction';
+  deleteIdToConfirm = id;
+  document.getElementById('confirm-modal-text').textContent = 'Tem certeza que deseja excluir esta transação?';
+  openModal('confirm-modal');
+}
+
+function confirmDeleteTx() {
+  if (deleteIdToConfirm !== null) {
+    state.transactions = state.transactions.filter(t => t.id !== deleteIdToConfirm);
+    toast('Transaction deleted!', 'success');
+    save();
+    updateDashboard();
+    updateChart();
+    renderAllTx();
+    closeModal('confirm-modal');
+    deleteIdToConfirm = null;
+  }
 }
 
 // ─── DASHBOARD ────────────────────────────────────────
 function updateDashboard() {
-  const txs = state.transactions;
+  const txs = getUserTransactions();
   const income = txs.filter(t=>t.type==='income').reduce((a,b)=>a+b.amount,0);
   const expense = txs.filter(t=>t.type==='expense').reduce((a,b)=>a+b.amount,0);
   const balance = income - expense;
 
   const balEl = document.getElementById('total-balance');
   balEl.textContent = fmtMoney(balance);
-  balEl.style.color = balance < 0 ? '#ff6b6b' : '';
+  balEl.style.color = balance < 0 ? 'var(--expense)' : '';
   document.getElementById('total-income').textContent = fmtMoney(income);
   document.getElementById('total-expense').textContent = fmtMoney(expense);
 
@@ -357,7 +392,7 @@ function txItemHTML(tx, showEdit=false) {
 function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function updateCatSummary() {
-  const txs = state.transactions;
+  const txs = getUserTransactions();
   const catTotals = {};
   txs.forEach(t => {
     if (!catTotals[t.category]) catTotals[t.category] = { income:0, expense:0 };
@@ -426,7 +461,7 @@ function renderAllTx() {
   const fromVal = document.getElementById('filter-from').value;
   const toVal = document.getElementById('filter-to').value;
 
-  let txs = [...state.transactions];
+  let txs = [...getUserTransactions()];
 
   if (currentCatFilter === 'income') txs = txs.filter(t=>t.type==='income');
   else if (currentCatFilter === 'expense') txs = txs.filter(t=>t.type==='expense');
@@ -555,15 +590,16 @@ function updateChart() {
 
   const days = getLast7Days();
   const labels = days.map(getDayLabel);
+  const userTxs = getUserTransactions();
 
   const incomeData = days.map(day => {
-    return state.transactions
+    return userTxs
       .filter(t => t.type === 'income' && t.date === day)
       .reduce((a, b) => a + Number(b.amount), 0);
   });
 
   const expenseData = days.map(day => {
-    return state.transactions
+    return userTxs
       .filter(t => t.type === 'expense' && t.date === day)
       .reduce((a, b) => a + Number(b.amount), 0);
   });
@@ -608,6 +644,13 @@ function updateChart() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      animation: {
+        duration: 1000,
+        easing: 'easeInOutQuart',
+        onComplete: function() {
+          // Animation complete
+        }
+      },
 
       plugins: {
         legend: {
@@ -620,8 +663,16 @@ function updateChart() {
           bodyColor: getCSSVar('--text-muted') || '#ccc',
           borderColor: border,
           borderWidth: 1,
+          padding: 12,
+          cornerRadius: 8,
+          titleFont: { size: 13, weight: 'bold' },
+          bodyFont: { size: 12 },
+          displayColors: false,
 
           callbacks: {
+            title: function(ctx) {
+              return ctx[0].label;
+            },
             label: function(ctx) {
               return `${ctx.dataset.label}: ${fmtMoney(ctx.raw)}`;
             }
@@ -636,7 +687,8 @@ function updateChart() {
           },
 
           ticks: {
-            color: textMuted
+            color: textMuted,
+            font: { size: 12 }
           }
         },
 
@@ -644,11 +696,13 @@ function updateChart() {
           beginAtZero: true,
 
           grid: {
-            color: border + '55'
+            color: border + '55',
+            drawBorder: false
           },
 
           ticks: {
             color: textMuted,
+            font: { size: 11 },
 
             callback: function(value) {
               return '$' + value;
@@ -693,12 +747,14 @@ function changeMonth(delta) {
 
 function planKey() { return `plan_${plannerYear}_${plannerMonth}`; }
 
+function cardsKey() { return `flo_cards_${state.currentUser?.id || 'guest'}`; }
+
 function getPlans() {
   return JSON.parse(localStorage.getItem('flo_plans_' + planKey()) || '[]');
 }
 
 function getCards() {
-  return JSON.parse(localStorage.getItem('flo_cards') || '[]');
+  return JSON.parse(localStorage.getItem(cardsKey()) || '[]');
 }
 
 function savePlans(plans) {
@@ -706,7 +762,7 @@ function savePlans(plans) {
 }
 
 function saveCards(cards) {
-  localStorage.setItem('flo_cards', JSON.stringify(cards));
+  localStorage.setItem(cardsKey(), JSON.stringify(cards));
 }
 
 // ─── RENDER PLANNER ───────────────────────────────────
@@ -767,8 +823,9 @@ function renderPlanner() {
 
 function planItemHTML(p) {
   const isInc = p.type === 'income';
+  const isRealized = p.realized === true;
   return `
-    <div class="plan-item">
+    <div class="plan-item ${isRealized ? 'plan-item-realized' : ''}">
       <div class="plan-item-icon">${getCatIcon(p.category, p.type)}</div>
       <div class="plan-item-info">
         <div class="plan-item-desc">${escHtml(p.desc)}</div>
@@ -778,6 +835,7 @@ function planItemHTML(p) {
         <div class="plan-item-value ${isInc?'income-val':'expense-val'}">${isInc?'+':'-'}${fmtMoney(p.amount)}</div>
       </div>
       <div class="plan-item-actions">
+        <button class="plan-mini-btn ${isRealized ? 'realized' : ''}" title="${isRealized ? 'Desmarcar como realizado' : 'Marcar como realizado'}" onclick="toggleRealizePlanItem(${p.id})">${isRealized ? '✓' : '○'}</button>
         <button class="plan-mini-btn" onclick="openEditPlanModal(${p.id})">✏️</button>
         <button class="plan-mini-btn del" onclick="deletePlanItem(${p.id})">✕</button>
       </div>
@@ -788,7 +846,7 @@ function planItemHTML(p) {
 function renderCompTable(plans) {
   // Get real transactions for this month
   const monthStr = `${plannerYear}-${String(plannerMonth+1).padStart(2,'0')}`;
-  const realTxs = state.transactions.filter(t => t.date.startsWith(monthStr));
+  const realTxs = getUserTransactions().filter(t => t.date.startsWith(monthStr));
 
   // Build per-category planned
   const catPlanned = {};
@@ -986,10 +1044,231 @@ function savePlanItem() {
 }
 
 function deletePlanItem(id) {
-  const plans = getPlans().filter(p => p.id !== id);
-  savePlans(plans);
-  renderPlanner();
-  toast('Item removido.', '');
+  currentDeleteType = 'plan';
+  deleteIdToConfirm = id;
+  document.getElementById('confirm-modal-text').textContent = 'Tem certeza que deseja excluir este item de planejamento?';
+  openModal('confirm-modal');
+}
+
+function confirmDeletePlanItem() {
+  if (deleteIdToConfirm !== null) {
+    const plans = getPlans().filter(p => p.id !== deleteIdToConfirm);
+    savePlans(plans);
+    renderPlanner();
+    toast('Item removido.', '');
+    closeModal('confirm-modal');
+    deleteIdToConfirm = null;
+  }
+}
+
+function toggleRealizePlanItem(id) {
+  const plans = getPlans();
+  const plan = plans.find(p => p.id === id);
+  if (plan) {
+    plan.realized = !plan.realized;
+    savePlans(plans);
+    renderPlanner();
+    toast(plan.realized ? 'Marcado como realizado ✓' : 'Desmarcado', 'success');
+  }
+}
+
+// ─── EXPORT TO PDF ────────────────────────────────────
+function openExportModal() {
+  openModal('export-modal');
+}
+
+function exportToPDF() {
+  const exportType = document.querySelector('input[name="export-type"]:checked').value;
+  const element = document.createElement('div');
+  element.style.padding = '20px';
+  element.style.background = 'white';
+  element.style.color = '#1a1714';
+  
+  let content = '';
+  const userName = state.currentUser?.name || 'User';
+  const currentDate = new Date().toLocaleDateString('pt-BR');
+  
+  if (exportType === 'dashboard') {
+    content = generateDashboardPDF();
+  } else if (exportType === 'planner') {
+    content = generatePlannerPDF();
+  } else if (exportType === 'transactions') {
+    content = generateTransactionsPDF();
+  }
+  
+  element.innerHTML = `
+    <div style="font-family: Arial, sans-serif;">
+      <h1 style="color: #2d6a4f; margin-bottom: 10px;">Flo - Personal Finance</h1>
+      <p style="color: #8a8178; margin-bottom: 20px;">Usuário: ${escHtml(userName)} | Data: ${currentDate}</p>
+      ${content}
+    </div>
+  `;
+  
+  const opt = {
+    margin: 10,
+    filename: `flo-${exportType}-${new Date().toISOString().slice(0,10)}.pdf`,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2 },
+    jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+  };
+  
+  html2pdf().set(opt).from(element).save();
+  closeModal('export-modal');
+  toast('PDF exportado com sucesso!', 'success');
+}
+
+function generateDashboardPDF() {
+  const txs = getUserTransactions();
+  const income = txs.filter(t=>t.type==='income').reduce((a,b)=>a+b.amount,0);
+  const expense = txs.filter(t=>t.type==='expense').reduce((a,b)=>a+b.amount,0);
+  const balance = income - expense;
+  
+  let html = `
+    <h2 style="margin-top: 0;">Dashboard</h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+      <div style="border: 1px solid #e2ddd8; padding: 15px; border-radius: 8px;">
+        <p style="margin: 0 0 5px 0; color: #8a8178; font-size: 12px;">Receita Total</p>
+        <p style="margin: 0; font-size: 24px; font-weight: bold; color: #2d6a4f;">${fmtMoney(income)}</p>
+      </div>
+      <div style="border: 1px solid #e2ddd8; padding: 15px; border-radius: 8px;">
+        <p style="margin: 0 0 5px 0; color: #8a8178; font-size: 12px;">Despesa Total</p>
+        <p style="margin: 0; font-size: 24px; font-weight: bold; color: #c1440e;">${fmtMoney(expense)}</p>
+      </div>
+      <div style="border: 1px solid #e2ddd8; padding: 15px; border-radius: 8px;">
+        <p style="margin: 0 0 5px 0; color: #8a8178; font-size: 12px;">Saldo</p>
+        <p style="margin: 0; font-size: 24px; font-weight: bold; color: ${balance < 0 ? '#c1440e' : '#2d6a4f'};">${fmtMoney(balance)}</p>
+      </div>
+    </div>
+    
+    <h3>Transações Recentes</h3>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+      <thead>
+        <tr style="background: #f5f3ef; border-bottom: 2px solid #e2ddd8;">
+          <th style="padding: 10px; text-align: left; font-weight: bold;">Descrição</th>
+          <th style="padding: 10px; text-align: left; font-weight: bold;">Categoria</th>
+          <th style="padding: 10px; text-align: right; font-weight: bold;">Valor</th>
+          <th style="padding: 10px; text-align: left; font-weight: bold;">Data</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+  
+  const sorted = [...txs].sort((a,b)=> (b.date+b.time).localeCompare(a.date+a.time)).slice(0, 10);
+  sorted.forEach(tx => {
+    const isInc = tx.type === 'income';
+    html += `
+      <tr style="border-bottom: 1px solid #e2ddd8;">
+        <td style="padding: 10px;">${escHtml(tx.desc)}</td>
+        <td style="padding: 10px;">${escHtml(tx.category)}</td>
+        <td style="padding: 10px; text-align: right; color: ${isInc ? '#2d6a4f' : '#c1440e'}; font-weight: bold;">${isInc ? '+' : '-'}${fmtMoney(tx.amount)}</td>
+        <td style="padding: 10px;">${tx.date}</td>
+      </tr>
+    `;
+  });
+  
+  html += `</tbody></table>`;
+  return html;
+}
+
+function generatePlannerPDF() {
+  const plans = getPlans();
+  const incomes = plans.filter(p => p.type === 'income');
+  const expenses = plans.filter(p => p.type === 'expense');
+  
+  const totalIncome = incomes.reduce((a,b) => a+b.amount, 0);
+  const totalExpense = expenses.reduce((a,b) => a+b.amount, 0);
+  const balance = totalIncome - totalExpense;
+  
+  const label = `${MONTHS_PT[plannerMonth]} ${plannerYear}`;
+  
+  let html = `
+    <h2 style="margin-top: 0;">Planejamento - ${label}</h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+      <div style="border: 1px solid #e2ddd8; padding: 15px; border-radius: 8px;">
+        <p style="margin: 0 0 5px 0; color: #8a8178; font-size: 12px;">Receita Planejada</p>
+        <p style="margin: 0; font-size: 24px; font-weight: bold; color: #2d6a4f;">${fmtMoney(totalIncome)}</p>
+      </div>
+      <div style="border: 1px solid #e2ddd8; padding: 15px; border-radius: 8px;">
+        <p style="margin: 0 0 5px 0; color: #8a8178; font-size: 12px;">Despesa Planejada</p>
+        <p style="margin: 0; font-size: 24px; font-weight: bold; color: #c1440e;">${fmtMoney(totalExpense)}</p>
+      </div>
+      <div style="border: 1px solid #e2ddd8; padding: 15px; border-radius: 8px;">
+        <p style="margin: 0 0 5px 0; color: #8a8178; font-size: 12px;">Saldo Planejado</p>
+        <p style="margin: 0; font-size: 24px; font-weight: bold; color: ${balance < 0 ? '#c1440e' : '#2d6a4f'};">${fmtMoney(balance)}</p>
+      </div>
+    </div>
+    
+    <h3>Receitas</h3>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+      <thead>
+        <tr style="background: #f5f3ef; border-bottom: 2px solid #e2ddd8;">
+          <th style="padding: 10px; text-align: left; font-weight: bold;">Descrição</th>
+          <th style="padding: 10px; text-align: left; font-weight: bold;">Categoria</th>
+          <th style="padding: 10px; text-align: right; font-weight: bold;">Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+  
+  incomes.forEach(p => {
+    html += `
+      <tr style="border-bottom: 1px solid #e2ddd8;">
+        <td style="padding: 10px;">${escHtml(p.desc)}</td>
+        <td style="padding: 10px;">${escHtml(p.category)}</td>
+        <td style="padding: 10px; text-align: right; color: #2d6a4f; font-weight: bold;">+${fmtMoney(p.amount)}</td>
+      </tr>
+    `;
+  });
+  
+  html += `</tbody></table><h3>Despesas</h3><table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;"><thead><tr style="background: #f5f3ef; border-bottom: 2px solid #e2ddd8;"><th style="padding: 10px; text-align: left; font-weight: bold;">Descrição</th><th style="padding: 10px; text-align: left; font-weight: bold;">Categoria</th><th style="padding: 10px; text-align: right; font-weight: bold;">Valor</th></tr></thead><tbody>`;
+  
+  expenses.forEach(p => {
+    html += `
+      <tr style="border-bottom: 1px solid #e2ddd8;">
+        <td style="padding: 10px;">${escHtml(p.desc)}</td>
+        <td style="padding: 10px;">${escHtml(p.category)}</td>
+        <td style="padding: 10px; text-align: right; color: #c1440e; font-weight: bold;">-${fmtMoney(p.amount)}</td>
+      </tr>
+    `;
+  });
+  
+  html += `</tbody></table>`;
+  return html;
+}
+
+function generateTransactionsPDF() {
+  const txs = [...getUserTransactions()].sort((a,b)=> (b.date+b.time).localeCompare(a.date+a.time));
+  
+  let html = `
+    <h2 style="margin-top: 0;">Todas as Transações</h2>
+    <table style="width: 100%; border-collapse: collapse;">
+      <thead>
+        <tr style="background: #f5f3ef; border-bottom: 2px solid #e2ddd8;">
+          <th style="padding: 10px; text-align: left; font-weight: bold;">Descrição</th>
+          <th style="padding: 10px; text-align: left; font-weight: bold;">Categoria</th>
+          <th style="padding: 10px; text-align: right; font-weight: bold;">Valor</th>
+          <th style="padding: 10px; text-align: left; font-weight: bold;">Data</th>
+          <th style="padding: 10px; text-align: left; font-weight: bold;">Tipo</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+  
+  txs.forEach(tx => {
+    const isInc = tx.type === 'income';
+    html += `
+      <tr style="border-bottom: 1px solid #e2ddd8;">
+        <td style="padding: 10px;">${escHtml(tx.desc)}</td>
+        <td style="padding: 10px;">${escHtml(tx.category)}</td>
+        <td style="padding: 10px; text-align: right; color: ${isInc ? '#2d6a4f' : '#c1440e'}; font-weight: bold;">${isInc ? '+' : '-'}${fmtMoney(tx.amount)}</td>
+        <td style="padding: 10px;">${tx.date}</td>
+        <td style="padding: 10px;">${isInc ? 'Receita' : 'Despesa'}</td>
+      </tr>
+    `;
+  });
+  
+  html += `</tbody></table>`;
+  return html;
 }
 
 // ─── CARD BUDGET MODAL ────────────────────────────────
@@ -1026,7 +1305,7 @@ function addCard() {
   const limit = parseFloat(document.getElementById('new-card-limit').value);
   if (!name || !limit || limit <= 0) { toast('Preencha nome e limite do cartão.', 'error'); return; }
   const cards = getCards();
-  cards.push({ id: Date.now(), name, limit });
+  cards.push({ id: Date.now(), name, limit, userId: state.currentUser.id });
   saveCards(cards);
   document.getElementById('new-card-name').value = '';
   document.getElementById('new-card-limit').value = '';
@@ -1040,6 +1319,17 @@ function deleteCard(id) {
   renderCardBudget(getPlanAvailable());
   toast('Cartão removido.', '');
 }
+// ─── EVENT LISTENERS ───────────────────────────────────
 document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') handleLogin(); });
 document.getElementById('login-email').addEventListener('keydown', e => { if(e.key==='Enter') handleLogin(); });
 document.getElementById('signup-pass').addEventListener('keydown', e => { if(e.key==='Enter') handleSignup(); });
+
+// Connect delete confirmation button
+let currentDeleteType = null;
+document.getElementById('confirm-delete-btn').addEventListener('click', () => {
+  if (currentDeleteType === 'transaction') {
+    confirmDeleteTx();
+  } else if (currentDeleteType === 'plan') {
+    confirmDeletePlanItem();
+  }
+});

@@ -288,6 +288,20 @@
 
   .theme-toggle:hover { background: var(--border); transform: rotate(20deg); }
 
+  .export-btn {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    transition: all var(--transition);
+    color: var(--text);
+  }
+
+  .export-btn:hover { background: var(--border); transform: translateY(-2px); }
+
   .nav-user {
     display: flex; align-items: center; gap: 10px;
     font-size: 0.875rem;
@@ -467,6 +481,9 @@
   .plan-card.highlight.negative { background: var(--expense); }
   .plan-card.highlight.positive { background: var(--income); }
 
+  .dark .plan-card.highlight .plan-card-label { color: rgba(20,18,16,0.7); }
+  .dark .plan-card.highlight .plan-card-sub { color: rgba(20,18,16,0.5); }
+
   /* ─── PLANNER GRID ─── */
   .planner-grid {
     display: grid;
@@ -531,6 +548,15 @@
 
   .plan-mini-btn:hover { border-color: var(--accent); color: var(--accent); }
   .plan-mini-btn.del:hover { border-color: var(--expense); color: var(--expense); }
+  .plan-mini-btn.realized { border-color: var(--income); color: var(--income); }
+
+  .plan-item-realized {
+    opacity: 0.6;
+  }
+
+  .plan-item-realized .plan-item-desc {
+    text-decoration: line-through;
+  }
 
   /* ─── COMPARISON TABLE ─── */
   .comp-table { width: 100%; border-collapse: collapse; }
@@ -651,6 +677,8 @@
 
   .main-card .balance-label { color: rgba(240,237,232,0.55); }
 
+  .dark .main-card .balance-label { color: rgba(20,18,16,0.7); }
+
   .balance-dot {
     width: 7px; height: 7px;
     border-radius: 50%;
@@ -678,6 +706,8 @@
   }
 
   .main-card .balance-change { color: rgba(240,237,232,0.4); }
+
+  .dark .main-card .balance-change { color: rgba(20,18,16,0.6); }
 
   /* ─── DASHBOARD BODY ─── */
   .dashboard-grid {
@@ -881,7 +911,7 @@
     margin-left: 6px;
   }
 
-  .tx-delete-btn:hover { border-color: #ff6b6b; color: #ff6b6b; }
+  .tx-delete-btn:hover { border-color: var(--expense); color: var(--expense); }
   .tx-delete-btn.visible { display: block; }
 
   .empty-state {
@@ -1114,16 +1144,62 @@
 
   /* ─── MOBILE ─── */
   @media (max-width: 600px) {
+    html { font-size: 15px; }
     .nav { padding: 0 16px; }
     .main { padding: 24px 16px 48px; }
     .auth-card { padding: 36px 28px; }
+    .greeting { margin-bottom: 28px; }
     .greeting-name { font-size: 1.9rem; }
+    .greeting-date { font-size: 0.85rem; }
     .balance-amount { font-size: 1.6rem; }
     .form-row { grid-template-columns: 1fr; }
     .nav-user span { display: none; }
     .chart-filters { flex-wrap: wrap; }
+    .modal { max-width: 90vw; margin: 0 20px; }
     .modal-header { padding: 20px 20px 0; }
-    .modal-body { padding: 0 20px 20px; }
+    .modal-body { padding: 0 20px 20px; max-height: calc(100vh - 200px); overflow-y: auto; }
+    .modal-footer { padding: 16px 20px; gap: 8px; }
+    .modal-footer .btn { flex: 1; }
+    .page-tabs { gap: 8px; }
+    .page-tab { padding: 10px 16px; font-size: 0.85rem; }
+    .page-tab span { font-size: 1rem; }
+    .form-group { margin-bottom: 16px; }
+    .btn { padding: 11px 16px; font-size: 0.85rem; }
+    .btn.btn-sm { padding: 7px 12px; font-size: 0.75rem; }
+    .tx-item { gap: 8px; padding: 10px; }
+    .tx-desc { font-size: 0.8rem; }
+    .tx-date { font-size: 0.65rem; }
+    .tx-edit-btn, .tx-delete-btn { font-size: 0.7rem; padding: 4px 8px; }
+    .all-tx-list { max-height: 60vh; }
+    input[type="date"], input[type="text"], input[type="email"], input[type="password"], select {
+      padding: 10px 12px;
+      font-size: 16px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    html { font-size: 14px; }
+    .main { padding: 20px 12px 40px; }
+    .auth-card { padding: 32px 20px; }
+    .greeting { margin-bottom: 24px; }
+    .greeting-name { font-size: 1.6rem; }
+    .greeting-sub { font-size: 0.8rem; }
+    .balance-amount { font-size: 1.4rem; }
+    .nav-logo { font-size: 1.4rem; }
+    .auth-logo { font-size: 2.2rem; }
+    .modal { max-width: 95vw; }
+    .balance-card { padding: 16px; }
+    .balance-label { font-size: 0.75rem; }
+    .balance-amount { font-size: 1.3rem; }
+    .recent-tx-card { padding: 16px; }
+    .card-title { font-size: 0.95rem; }
+    .form-group label { font-size: 0.85rem; }
+  }
+
+  @media (max-width: 800px) {
+    .balance-grid { grid-template-columns: 1fr; }
+    .page-tabs { flex-direction: column; }
+    .page-tab { width: 100%; }
   }
 
   /* ─── SCROLLBAR ─── */
@@ -1134,6 +1210,39 @@
   /* ─── FADE ANIMATION ─── */
   .fade-in { animation: fadeIn 0.4s ease forwards; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ─── SLIDE-IN ANIMATIONS ─── */
+  @keyframes slideInLeft { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes slideInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+  @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+
+  /* Apply entrance animations to cards */
+  .balance-card { animation: slideInUp 0.5s ease forwards; }
+  .balance-grid > *:nth-child(2) { animation-delay: 0.1s; }
+  .balance-grid > *:nth-child(3) { animation-delay: 0.2s; }
+  
+  .tx-item { animation: slideInLeft 0.3s ease forwards; }
+  .plan-item { animation: slideInLeft 0.3s ease forwards; }
+  
+  .modal-overlay.open .modal { animation: scaleIn 0.3s ease forwards; }
+  
+  /* Hover animations */
+  .balance-card { transition: all var(--transition); }
+  .balance-card:hover { transform: translateY(-4px); }
+  
+  .tx-item { transition: all var(--transition); }
+  .tx-item:hover { background: var(--surface); }
+  
+  .plan-item { transition: all var(--transition); }
+  .plan-item:hover { transform: translateX(4px); }
+  
+  .btn { transition: all var(--transition); }
+  .btn:active { animation: bounce 0.3s ease; }
 
   select option { background: var(--surface); color: var(--text); }
 

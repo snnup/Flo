@@ -16,46 +16,50 @@
   <!-- LOGIN -->
   <div class="auth-card" id="login-card">
     <div class="auth-logo">F<span>l</span>o</div>
-    <p class="auth-tagline">Your personal finance companion</p>
-    <h2 class="auth-title">Welcome back</h2>
+    <p class="auth-tagline">Seu controle financeiro pessoal.</p>
+    <h2 class="auth-title">Bem-vindo(a) de volta</h2>
     <div class="form-group">
       <label>Email</label>
-      <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email">
-      <p class="form-error" id="login-email-err">Please enter a valid email.</p>
+      <input type="email" id="login-email" placeholder="alex@example.com" autocomplete="email">
+      <p class="form-error" id="login-email-err">Por favor, insira um email válido.</p>
     </div>
     <div class="form-group">
-      <label>Password</label>
+      <label>Senha</label>
       <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
-      <p class="form-error" id="login-pass-err">Password must be at least 6 characters.</p>
+      <p class="form-error" id="login-pass-err">Senha deve conter pelo menos 8 caracteres.</p>
+    </div>
+    <div class="form-group" style="display:flex;align-items:center;gap:8px;margin:12px 0;">
+      <input type="checkbox" id="login-remember" style="width:16px;height:16px;cursor:pointer;">
+      <label for="login-remember" style="margin:0;cursor:pointer;font-size:0.7rem;">Lembrar-me neste dispositivo</label>
     </div>
     <p class="form-error" id="login-general-err" style="margin-bottom:8px;"></p>
-    <button class="btn btn-primary" onclick="handleLogin()">Sign In →</button>
-    <p class="auth-switch">Don't have an account? <a onclick="showSignup()">Create one</a></p>
+    <button class="btn btn-primary" onclick="handleLogin()">Entre →</button>
+    <p class="auth-switch">Não possuí uma conta? <a onclick="showSignup()">Crie uma.</a></p>
   </div>
 
   <!-- SIGNUP -->
   <div class="auth-card" id="signup-card" style="display:none;">
     <div class="auth-logo">F<span>l</span>o</div>
-    <p class="auth-tagline">Your personal finance companion</p>
-    <h2 class="auth-title">Create account</h2>
+    <p class="auth-tagline">Seu controle financeiro pessoal.</p>
+    <h2 class="auth-title">Crie uma conta</h2>
     <div class="form-group">
-      <label>Your Name</label>
+      <label>Seu Nome</label>
       <input type="text" id="signup-name" placeholder="Alex Johnson">
-      <p class="form-error" id="signup-name-err">Please enter your name.</p>
+      <p class="form-error" id="signup-name-err">Por favor, insira seu nome.</p>
     </div>
     <div class="form-group">
       <label>Email</label>
-      <input type="email" id="signup-email" placeholder="you@example.com">
-      <p class="form-error" id="signup-email-err">Please enter a valid email.</p>
+      <input type="email" id="signup-email" placeholder="alex@example.com">
+      <p class="form-error" id="signup-email-err">Por favor, insira um email válido.</p>
     </div>
     <div class="form-group">
-      <label>Password</label>
-      <input type="password" id="signup-pass" placeholder="Min. 6 characters">
-      <p class="form-error" id="signup-pass-err">Password must be at least 6 characters.</p>
+      <label>Senha</label>
+      <input type="password" id="signup-pass" placeholder="Min. 8 characters">
+      <p class="form-error" id="signup-pass-err">Senha deve conter pelo menos 8 caracteres.</p>
     </div>
     <p class="form-error" id="signup-general-err" style="margin-bottom:8px;"></p>
-    <button class="btn btn-primary" onclick="handleSignup()">Create Account →</button>
-    <p class="auth-switch">Already have an account? <a onclick="showLogin()">Sign in</a></p>
+    <button class="btn btn-primary" onclick="handleSignup()">Crie uma conta →</button>
+    <p class="auth-switch">Já possuí uma conta? <a onclick="showLogin()">Entre.</a></p>
   </div>
 </div>
 
@@ -66,11 +70,12 @@
     <div class="nav-logo">F<span>l</span>o</div>
     <div class="nav-actions">
       <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌙</button>
+      <button class="export-btn" onclick="openExportModal()" title="Exportar PDF">📥</button>
       <div class="nav-user">
         <div class="nav-avatar" id="nav-avatar">A</div>
         <span id="nav-username">User</span>
       </div>
-      <button class="btn-logout" onclick="handleLogout()">Logout</button>
+      <button class="btn-logout" onclick="handleLogout()">Sair</button>
     </div>
   </nav>
 
@@ -90,9 +95,9 @@
     <div id="dashboard-page">
     <!-- GREETING -->
     <div class="greeting fade-in">
-      <p class="greeting-date" id="greeting-date">Monday, 01 January 2025</p>
-      <h1 class="greeting-name">Hello, <span id="greeting-name">Alex</span> 👋</h1>
-      <p class="greeting-sub">Welcome to your financial control</p>
+      <p class="greeting-date" id="greeting-date">Quarta-Feira, 06 Maio 2025</p>
+      <h1 class="greeting-name">Olá, <span id="greeting-name">Alex</span> 👋</h1>
+      <p class="greeting-sub">Bem-Vindo(a) ao seu controle financeiro.</p>
     </div>
 
     <!-- BALANCE CARDS -->
@@ -519,8 +524,57 @@
 <!-- TOAST -->
 <div class="toast-container" id="toast-container"></div>
 
+<!-- DELETE CONFIRMATION MODAL -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="confirm-modal-title">Confirmar Exclusão</h3>
+      <button class="modal-close" onclick="closeModal('confirm-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p id="confirm-modal-text">Tem certeza que deseja excluir este item?</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('confirm-modal')">Cancelar</button>
+      <button class="btn btn-primary" id="confirm-delete-btn">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="modal-overlay" id="export-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">Exportar para PDF</h3>
+      <button class="modal-close" onclick="closeModal('export-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="margin-bottom: 16px; color: var(--text-muted); font-size: 0.9rem;">Escolha o que deseja exportar:</p>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+          <input type="radio" name="export-type" value="dashboard" checked>
+          <span>📊 Dashboard</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+          <input type="radio" name="export-type" value="planner">
+          <span>📅 Planejamento</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+          <input type="radio" name="export-type" value="transactions">
+          <span>📋 Transações</span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('export-modal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="exportToPDF()">Exportar PDF</button>
+    </div>
+  </div>
+</div>
+
 <!-- Chart.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
