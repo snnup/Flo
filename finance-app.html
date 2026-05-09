@@ -93,7 +93,7 @@
       <button class="export-btn" onclick="openExportModal()" title="Exportar PDF">📥</button>
       <div class="nav-user">
         <div class="nav-avatar" id="nav-avatar">A</div>
-        <span id="nav-username">User</span>
+        <span id="nav-username">Usuário</span>
       </div>
       <button class="btn-logout" onclick="handleLogout()">Sair</button>
     </div>
@@ -123,23 +123,23 @@
     <!-- BALANCE CARDS -->
     <div class="balance-grid fade-in">
       <div class="balance-card main-card">
-        <div class="balance-label">Total Balance</div>
-        <div class="balance-amount" id="total-balance">$0.00</div>
-        <div class="balance-change">All time · Updated now</div>
+        <div class="balance-label">Valor total</div>
+        <div class="balance-amount" id="total-balance">R$0.00</div>
+        <div class="balance-change">Tempo real · Atualizado agora</div>
       </div>
       <div class="balance-card">
         <div class="balance-label" style="color:var(--income)">
-          <span class="balance-dot" style="background:var(--income)"></span>Income
+          <span class="balance-dot" style="background:var(--income)"></span>Receita
         </div>
-        <div class="balance-amount income-val" id="total-income">$0.00</div>
-        <div class="balance-change">Total earned</div>
+        <div class="balance-amount income-val" id="total-income">R$0.00</div>
+        <div class="balance-change">Total ganho</div>
       </div>
       <div class="balance-card">
         <div class="balance-label" style="color:var(--expense)">
-          <span class="balance-dot" style="background:var(--expense)"></span>Expenses
+          <span class="balance-dot" style="background:var(--expense)"></span>Despesas
         </div>
-        <div class="balance-amount expense-val" id="total-expense">$0.00</div>
-        <div class="balance-change">Total spent</div>
+        <div class="balance-amount expense-val" id="total-expense">R$0.00</div>
+        <div class="balance-change">Total gasto</div>
       </div>
     </div>
 
@@ -150,11 +150,11 @@
         <!-- CHART -->
         <div class="card fade-in">
           <div class="card-header">
-            <h3 class="card-title">7-Day Activity</h3>
+            <h3 class="card-title">Atividade de 7 dias</h3>
             <div class="chart-filters">
-              <button class="filter-btn active-all" onclick="setChartFilter('all', this)">All</button>
-              <button class="filter-btn" onclick="setChartFilter('income', this)">Income</button>
-              <button class="filter-btn" onclick="setChartFilter('expense', this)">Expenses</button>
+              <button class="filter-btn active-all" onclick="setChartFilter('all', this)">Tudo</button>
+              <button class="filter-btn" onclick="setChartFilter('income', this)">Receitas</button>
+              <button class="filter-btn" onclick="setChartFilter('expense', this)">Despesas</button>
             </div>
           </div>
           <div class="chart-wrap">
@@ -162,10 +162,10 @@
           </div>
           <div class="chart-legend">
             <div class="legend-item" id="legend-income">
-              <div class="legend-dot" style="background:var(--income-mid)"></div>Income
+              <div class="legend-dot" style="background:var(--income-mid)"></div>Receitas
             </div>
             <div class="legend-item" id="legend-expense">
-              <div class="legend-dot" style="background:var(--expense-mid)"></div>Expenses
+              <div class="legend-dot" style="background:var(--expense-mid)"></div>Despesas
             </div>
           </div>
         </div>
@@ -173,13 +173,13 @@
         <!-- RECENT -->
         <div class="card fade-in">
           <div class="card-header">
-            <h3 class="card-title">Recent Transactions</h3>
+            <h3 class="card-title">Transações recentes</h3>
             <button class="btn btn-sm btn-ghost" onclick="openAllModal()">View all</button>
           </div>
           <div class="tx-list" id="recent-tx-list">
             <div class="empty-state">
               <div class="empty-icon">🧾</div>
-              <p>No transactions yet</p>
+              <p>Sem transações ainda</p>
             </div>
           </div>
         </div>
@@ -188,29 +188,29 @@
       <!-- RIGHT: ACTIONS -->
       <div style="display:flex;flex-direction:column;gap:16px;">
         <div class="card fade-in">
-          <h3 class="card-title" style="margin-bottom:16px;">Quick Actions</h3>
+          <h3 class="card-title" style="margin-bottom:16px;">Ações Rápidas</h3>
           <div class="quick-actions">
             <button class="action-btn show-all" onclick="openAllModal()">
               <div class="action-icon gray">📋</div>
               <div class="action-text">
-                <div class="action-label">Show All</div>
-                <div class="action-desc">View & edit transactions</div>
+                <div class="action-label">Mostrar todas</div>
+                <div class="action-desc">Ver e editar transações</div>
               </div>
               <span style="color:var(--text-soft);font-size:1rem;">→</span>
             </button>
             <button class="action-btn add-income" onclick="openAddModal('income')">
               <div class="action-icon green">＋</div>
               <div class="action-text">
-                <div class="action-label">Add Income</div>
-                <div class="action-desc">Record a new income</div>
+                <div class="action-label">Adicione uma receita</div>
+                <div class="action-desc">Registre uma nova receita</div>
               </div>
               <span style="color:var(--text-soft);font-size:1rem;">→</span>
             </button>
             <button class="action-btn add-expense" onclick="openAddModal('expense')">
               <div class="action-icon red">－</div>
               <div class="action-text">
-                <div class="action-label">Add Expense</div>
-                <div class="action-desc">Record a new expense</div>
+                <div class="action-label">Adicione uma despesa</div>
+                <div class="action-desc">Registre uma nova despesa</div>
               </div>
               <span style="color:var(--text-soft);font-size:1rem;">→</span>
             </button>
@@ -219,9 +219,9 @@
 
         <!-- CATEGORY SUMMARY -->
         <div class="card fade-in">
-          <h3 class="card-title" style="margin-bottom:16px;">Top Categories</h3>
+          <h3 class="card-title" style="margin-bottom:16px;">Top categorias</h3>
           <div id="category-summary">
-            <div class="empty-state"><p>No data yet</p></div>
+            <div class="empty-state"><p>Sem dados ainda</p></div>
           </div>
         </div>
       </div>
@@ -249,25 +249,25 @@
         <div class="plan-card">
           <div class="plan-card-icon">💰</div>
           <div class="plan-card-label">Receita Prevista</div>
-          <div class="plan-card-value income-val" id="plan-income-total">$0,00</div>
+          <div class="plan-card-value income-val" id="plan-income-total">R$0,00</div>
           <div class="plan-card-sub">Total planejado</div>
         </div>
         <div class="plan-card">
           <div class="plan-card-icon">💸</div>
           <div class="plan-card-label">Despesa Prevista</div>
-          <div class="plan-card-value expense-val" id="plan-expense-total">$0,00</div>
+          <div class="plan-card-value expense-val" id="plan-expense-total">R$0,00</div>
           <div class="plan-card-sub">Total planejado</div>
         </div>
         <div class="plan-card highlight" id="plan-balance-card">
           <div class="plan-card-icon">⚖️</div>
           <div class="plan-card-label">Saldo Previsto</div>
-          <div class="plan-card-value" id="plan-balance-total">$0,00</div>
+          <div class="plan-card-value" id="plan-balance-total">R$0,00</div>
           <div class="plan-card-sub">Receitas − Despesas</div>
         </div>
         <div class="plan-card">
           <div class="plan-card-icon">💳</div>
           <div class="plan-card-label">Disponível p/ Cartões</div>
-          <div class="plan-card-value" id="plan-card-available" style="color:var(--income)">$0,00</div>
+          <div class="plan-card-value" id="plan-card-available" style="color:var(--income)">R$0,00</div>
           <div class="plan-card-sub">Após despesas fixas</div>
         </div>
       </div>
@@ -285,7 +285,7 @@
           </div>
           <div style="border-top:1px solid var(--border);margin-top:8px;padding-top:10px;display:flex;justify-content:space-between;align-items:center;">
             <span style="font-size:0.78rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Total</span>
-            <span style="font-family:'Fraunces',serif;font-size:1rem;font-weight:700;color:var(--income)" id="plan-income-footer">$0,00</span>
+            <span style="font-family:'Fraunces',serif;font-size:1rem;font-weight:700;color:var(--income)" id="plan-income-footer">R$0,00</span>
           </div>
         </div>
 
@@ -300,7 +300,7 @@
           </div>
           <div style="border-top:1px solid var(--border);margin-top:8px;padding-top:10px;display:flex;justify-content:space-between;align-items:center;">
             <span style="font-size:0.78rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Total</span>
-            <span style="font-family:'Fraunces',serif;font-size:1rem;font-weight:700;color:var(--expense)" id="plan-expense-footer">$0,00</span>
+            <span style="font-family:'Fraunces',serif;font-size:1rem;font-weight:700;color:var(--expense)" id="plan-expense-footer">R$0,00</span>
           </div>
         </div>
       </div>
@@ -357,39 +357,39 @@
         <button class="type-tab" id="tab-expense" onclick="setTxType('expense')">－ Expense</button>
       </div>
       <div class="form-group">
-        <label>Description</label>
+        <label>Descrição</label>
         <input type="text" id="tx-desc" placeholder="e.g. Monthly Salary, Coffee...">
-        <p class="form-error" id="tx-desc-err">Please enter a description.</p>
+        <p class="form-error" id="tx-desc-err">Por favor, informe uma descrição.</p>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Amount ($)</label>
+          <label>Valor (R$)</label>
           <input type="number" id="tx-amount" placeholder="0.00" min="0.01" step="0.01">
-          <p class="form-error" id="tx-amount-err">Please enter a valid amount.</p>
+          <p class="form-error" id="tx-amount-err">Por favor, informe um valor válido.</p>
         </div>
         <div class="form-group">
-          <label>Category</label>
+          <label>Categoria</label>
           <select id="tx-category">
-            <option value="">Select category...</option>
+            <option value="">Selecione uma categoria...</option>
           </select>
-          <p class="form-error" id="tx-cat-err">Please select a category.</p>
+          <p class="form-error" id="tx-cat-err">Por favor, selecione uma categoria.</p>
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Date</label>
+          <label>Data</label>
           <input type="date" id="tx-date">
-          <p class="form-error" id="tx-date-err">Please enter a date.</p>
+          <p class="form-error" id="tx-date-err">Por favor, informe uma data.</p>
         </div>
         <div class="form-group">
-          <label>Time</label>
+          <label>Hora</label>
           <input type="time" id="tx-time">
         </div>
       </div>
       <input type="hidden" id="tx-edit-id">
       <div class="modal-footer">
-        <button class="btn btn-ghost" onclick="closeModal('tx-modal')">Cancel</button>
-        <button class="btn btn-primary" id="tx-save-btn" onclick="saveTx()">Save Transaction</button>
+        <button class="btn btn-ghost" onclick="closeModal('tx-modal')">Cancelar</button>
+        <button class="btn btn-primary" id="tx-save-btn" onclick="saveTx()">Salvar Transação</button>
       </div>
     </div>
   </div>
@@ -399,7 +399,7 @@
 <div class="modal-overlay" id="all-modal">
   <div class="modal modal-wide">
     <div class="modal-header">
-      <h3 class="modal-title">All Transactions</h3>
+      <h3 class="modal-title">Todas as Transações</h3>
       <button class="modal-close" onclick="closeModal('all-modal')">✕</button>
     </div>
 
@@ -529,7 +529,7 @@
           <input type="text" id="new-card-name" placeholder="ex: Nubank, Itaú...">
         </div>
         <div class="form-group" style="width:130px;margin-bottom:0;">
-          <label>Limite ($)</label>
+          <label>Limite (R$)</label>
           <input type="number" id="new-card-limit" placeholder="0,00" min="0">
         </div>
         <button class="btn btn-primary" style="width:auto;margin-top:0;padding:11px 16px;" onclick="addCard()">+</button>
