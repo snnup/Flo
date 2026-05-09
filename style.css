@@ -1024,6 +1024,9 @@
   .modal-footer {
     display: flex; gap: 10px; justify-content: flex-end;
     margin-top: 20px;
+    margin-bottom: 20px;
+    margin-left: 20px;
+    margin-right: 20px;
   }
 
   /* ─── ALL TRANSACTIONS MODAL ─── */
