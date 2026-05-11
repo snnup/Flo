@@ -143,6 +143,15 @@
       </div>
     </div>
 
+    <!-- PROJECTED BALANCE -->
+    <div class="balance-grid fade-in" id="projected-section" style="display:none;">
+      <div class="balance-card" id="projected-card">
+        <div class="balance-label">Projeção - Final do Mês</div>
+        <div class="balance-amount" id="projected-balance">R$0.00</div>
+        <div class="balance-change" id="projected-sub">Baseado no ritmo de 7 dias</div>
+      </div>
+    </div>
+
     <!-- DASHBOARD GRID -->
     <div class="dashboard-grid">
       <!-- LEFT: CHART + RECENT -->
@@ -174,7 +183,7 @@
         <div class="card fade-in">
           <div class="card-header">
             <h3 class="card-title">Transações recentes</h3>
-            <button class="btn btn-sm btn-ghost" onclick="openAllModal()">View all</button>
+            <button class="btn btn-sm btn-ghost" onclick="openAllModal()">Ver todas</button>
           </div>
           <div class="tx-list" id="recent-tx-list">
             <div class="empty-state">
@@ -222,6 +231,17 @@
           <h3 class="card-title" style="margin-bottom:16px;">Top categorias</h3>
           <div id="category-summary">
             <div class="empty-state"><p>Sem dados ainda</p></div>
+          </div>
+        </div>
+
+        <!-- CARDS SUMMARY -->
+        <div class="card fade-in">
+          <div class="card-header">
+            <h3 class="card-title">Cartões</h3>
+            <button class="btn btn-sm btn-ghost" onclick="openCardBudgetModal()">Gerenciar</button>
+          </div>
+          <div id="dashboard-cards-summary">
+            <div class="empty-state"><p>Nenhum cartão cadastrado</p></div>
           </div>
         </div>
       </div>

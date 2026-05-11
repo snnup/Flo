@@ -86,6 +86,51 @@ function fmtDateShort(iso) {
   return `${d} ${months[parseInt(m)-1]}`;
 }
 
+// ─── UTILITIES ────────────────────────────────────────
+function normalizeCategory(cat) {
+  if (!cat) return '';
+  // Find the exact match in INCOME_CATS or EXPENSE_CATS
+  const allCats = [...INCOME_CATS, ...EXPENSE_CATS];
+  const normalized = allCats.find(c => c.toLowerCase() === cat.toLowerCase());
+  return normalized || cat;
+}
+
+function calculateProjectedEndOfMonth() {
+  const txs = getUserTransactions();
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+  const daysInMonth = lastDayOfMonth;
+  const dayOfMonth = today.getDate();
+  const daysRemaining = daysInMonth - dayOfMonth;
+  
+  // Get current balance
+  const income = txs.filter(t=>t.type==='income').reduce((a,b)=>a+b.amount,0);
+  const expense = txs.filter(t=>t.type==='expense').reduce((a,b)=>a+b.amount,0);
+  const currentBalance = income - expense;
+  
+  // Get last 7 days transactions
+  const last7DaysExpenses = txs.filter(t => {
+    const txDate = new Date(t.date);
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return txDate >= sevenDaysAgo && t.type === 'expense';
+  }).reduce((a,b) => a+b.amount, 0);
+  
+  const avgDailyExpense = last7DaysExpenses / 7;
+  const projectedExpense = avgDailyExpense * daysRemaining;
+  const projectedBalance = currentBalance - projectedExpense;
+  
+  return {
+    currentBalance,
+    projectedBalance,
+    avgDailyExpense,
+    daysRemaining,
+    projectedExpense
+  };
+}
+
 function getCatIcon(cat, type) {
   const icons = {
     'Salary':'💼','Freelance':'💻','Investment':'📈','Gift':'🎁','Bonus':'🏆','Other Income':'💰',
@@ -93,6 +138,15 @@ function getCatIcon(cat, type) {
     'Education':'📚','Utilities':'⚡','Travel':'✈️','Subscriptions':'📱','Other Expense':'💸'
   };
   return icons[cat] || (type === 'income' ? '💰' : '💸');
+}
+
+// ─── PASSWORD HASHING ──────────────────────────────
+async function hashPassword(password) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 // ─── PASSWORD VALIDATION ───────────────────────────────
@@ -170,7 +224,7 @@ function showSignup() {
   document.getElementById('signup-card').style.display = 'block';
 }
 
-function handleLogin() {
+async function handleLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-pass').value;
   const rememberMe = document.getElementById('login-remember').checked;
@@ -182,7 +236,8 @@ function handleLogin() {
   if (pass.length < 8) { show('login-pass-err'); valid = false; }
   if (!valid) return;
 
-  const user = state.users.find(u => u.email === email && u.password === pass);
+  const passHash = await hashPassword(pass);
+  const user = state.users.find(u => u.email === email && u.passwordHash === passHash);
   if (!user) { showErr('login-general-err', 'Invalid email or password.'); return; }
 
   state.currentUser = user;
@@ -193,7 +248,7 @@ function handleLogin() {
   showApp();
 }
 
-function handleSignup() {
+async function handleSignup() {
   const name = document.getElementById('signup-name').value.trim();
   const email = document.getElementById('signup-email').value.trim();
   const pass = document.getElementById('signup-pass').value;
@@ -222,7 +277,8 @@ function handleSignup() {
 
   if (state.users.find(u => u.email === email)) { showErr('signup-general-err', 'Email already registered.'); return; }
 
-  const user = { id: Date.now(), name, email, password: pass };
+  const passwordHash = await hashPassword(pass);
+  const user = { id: Date.now(), name, email, passwordHash, createdAt: new Date().toISOString() };
   state.users.push(user);
   state.currentUser = user;
   localStorage.setItem('flo_current', JSON.stringify(user));
@@ -363,11 +419,14 @@ function openEditModal(id) {
 function saveTx() {
   const desc = document.getElementById('tx-desc').value.trim();
   const amount = parseFloat(document.getElementById('tx-amount').value);
-  const category = document.getElementById('tx-category').value;
+  let category = document.getElementById('tx-category').value;
   const date = document.getElementById('tx-date').value;
   const time = document.getElementById('tx-time').value;
   const editId = document.getElementById('tx-edit-id').value;
   let valid = true;
+
+  // Normalize category
+  category = normalizeCategory(category);
 
   ['tx-desc-err','tx-amount-err','tx-cat-err','tx-date-err'].forEach(hide);
   if (!desc) { show('tx-desc-err'); valid = false; }
@@ -443,6 +502,36 @@ function updateDashboard() {
 
   // Category summary
   updateCatSummary();
+
+  // Cards summary
+  updateCardsSummary();
+
+  // Projected end of month
+  const projection = calculateProjectedEndOfMonth();
+  if (projection.daysRemaining > 0 && txs.length > 0) {
+    const projectedSection = document.getElementById('projected-section');
+    const projectedCard = document.getElementById('projected-card');
+    const projectedBalance = document.getElementById('projected-balance');
+    const projectedSub = document.getElementById('projected-sub');
+    
+    projectedBalance.textContent = fmtMoney(projection.projectedBalance);
+    projectedBalance.style.color = projection.projectedBalance < 0 ? 'var(--expense)' : '';
+    
+    const trend = projection.projectedBalance < projection.currentBalance ? '📉' : '📈';
+    const diff = Math.abs(projection.projectedBalance - projection.currentBalance);
+    projectedSub.textContent = `${trend} ${projection.projectedBalance < projection.currentBalance ? 'Queda' : 'Ganho'} de ${fmtMoney(diff)} · ${projection.daysRemaining} dias restantes`;
+    
+    projectedCard.classList.remove('positive', 'negative');
+    if (projection.projectedBalance < 0) {
+      projectedCard.classList.add('negative');
+    } else if (projection.projectedBalance > projection.currentBalance) {
+      projectedCard.classList.add('positive');
+    }
+    
+    projectedSection.style.display = 'grid';
+  } else {
+    document.getElementById('projected-section').style.display = 'none';
+  }
 }
 
 function txItemHTML(tx, showEdit=false) {
@@ -483,6 +572,39 @@ function updateCatSummary() {
         <span style="font-size:1.2rem">${getCatIcon(cat,'')}</span>
         <span style="flex:1;font-size:0.85rem;font-weight:500;color:var(--text)">${escHtml(cat)}</span>
         <span style="font-family:'Fraunces',serif;font-size:0.9rem;font-weight:600;color:${isPos?'var(--income)':'var(--expense)'}">${isPos?'+':'-'}${fmtMoney(Math.abs(net))}</span>
+      </div>`;
+  }).join('');
+}
+
+function updateCardsSummary() {
+  const cards = getCards();
+  const plans = getPlans();
+  const el = document.getElementById('dashboard-cards-summary');
+  if (cards.length === 0) {
+    el.innerHTML = `<div class="empty-state"><p>Nenhum cartão cadastrado</p></div>`;
+    return;
+  }
+  
+  el.innerHTML = cards.map(c => {
+    const cardExpense = plans.filter(p => p.type === 'expense' && p.card == c.id).reduce((a,b) => a+b.amount, 0);
+    const pct = c.limit > 0 ? Math.min((cardExpense / c.limit) * 100, 100) : 0;
+    const available = Math.max(0, c.limit - cardExpense);
+    const availColor = available > 0 ? 'var(--income)' : 'var(--expense)';
+    return `
+      <div style="display:flex;flex-direction:column;gap:8px;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:1.2rem;">💳</span>
+            <span style="font-weight:600;font-size:0.9rem;">${escHtml(c.name)}</span>
+          </div>
+          <span style="font-family:'Fraunces',serif;font-weight:600;font-size:0.9rem;color:${availColor}">${fmtMoney(available)}</span>
+        </div>
+        <div style="font-size:0.75rem;color:var(--text-muted);">
+          Limite: ${fmtMoney(c.limit)} · Gasto: ${fmtMoney(cardExpense)} · Disponível: ${fmtMoney(available)}
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" style="width:${pct}%;background:${pct > 80 ? 'var(--expense)' : pct > 50 ? 'var(--expense-mid)' : 'var(--income-mid)'}"></div>
+        </div>
       </div>`;
   }).join('');
 }
@@ -824,11 +946,13 @@ function planKey() { return `plan_${plannerYear}_${plannerMonth}`; }
 function cardsKey() { return `flo_cards_${state.currentUser?.id || 'guest'}`; }
 
 function getPlans() {
-  return JSON.parse(localStorage.getItem('flo_plans_' + planKey()) || '[]');
+  if (!state.currentUser) return [];
+  return JSON.parse(localStorage.getItem('flo_plans_' + planKey()) || '[]').filter(p => p.userId === state.currentUser.id);
 }
 
 function getCards() {
-  return JSON.parse(localStorage.getItem(cardsKey()) || '[]');
+  if (!state.currentUser) return [];
+  return JSON.parse(localStorage.getItem(cardsKey()) || '[]').filter(c => c.userId === state.currentUser.id);
 }
 
 function savePlans(plans) {
@@ -1087,12 +1211,15 @@ function openEditPlanModal(id) {
 function savePlanItem() {
   const desc = document.getElementById('plan-desc').value.trim();
   const amount = parseFloat(document.getElementById('plan-amount').value);
-  const category = document.getElementById('plan-category').value;
+  let category = document.getElementById('plan-category').value;
   const card = document.getElementById('plan-card').value;
   const recurrence = document.getElementById('plan-recurrence').value;
   const editId = parseInt(document.getElementById('plan-edit-id').value);
   const type = document.getElementById('plan-type').value;
   let valid = true;
+
+  // Normalize category
+  category = normalizeCategory(category);
 
   ['plan-desc-err','plan-amount-err','plan-cat-err','plan-card-err'].forEach(hide);
   if (!desc) { show('plan-desc-err'); valid = false; }
@@ -1105,10 +1232,10 @@ function savePlanItem() {
 
   if (editId) {
     const idx = plans.findIndex(x => x.id === editId);
-    if (idx > -1) plans[idx] = { ...plans[idx], desc, amount, category, recurrence, type, card };
+    if (idx > -1) plans[idx] = { ...plans[idx], desc, amount, category, recurrence, type, card, userId: state.currentUser.id };
     toast('Item atualizado!', 'success');
   } else {
-    plans.push({ id: Date.now(), desc, amount, category, recurrence, type, card });
+    plans.push({ id: Date.now(), desc, amount, category, recurrence, type, card, userId: state.currentUser.id });
     toast(type === 'income' ? 'Receita prevista adicionada!' : 'Despesa prevista adicionada!', 'success');
   }
 
