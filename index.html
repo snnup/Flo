@@ -37,9 +37,61 @@
     </div>
     <p class="form-error" id="login-general-err" style="margin-bottom:8px;"></p>
     <button class="btn btn-primary" onclick="handleLogin()">Entre →</button>
+    <p style="text-align:center;margin-top:12px;">
+      <a onclick="showForgotPassword()" style="font-size:0.78rem;color:var(--text-muted);cursor:pointer;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-muted)'">Esqueci minha senha</a>
+    </p>
     <p class="auth-switch">Não possuí uma conta? <a onclick="showSignup()">Crie uma.</a></p>
   </div>
 
+  <!-- FORGOT PASSWORD -->
+  <div class="auth-card" id="forgot-card" style="display:none;">
+    <div class="auth-logo">F<span>l</span>o</div>
+    <p class="auth-tagline">Seu controle financeiro pessoal.</p>
+    <h2 class="auth-title">Recuperar senha</h2>
+    <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:24px;line-height:1.5;">Insira seu email cadastrado e enviaremos um link para criar uma nova senha.</p>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="forgot-email" placeholder="alex@example.com" autocomplete="email">
+      <p class="form-error" id="forgot-email-err">Por favor, insira um email válido.</p>
+    </div>
+    <p class="form-error" id="forgot-general-err" style="margin-bottom:8px;"></p>
+    <div id="forgot-success" style="display:none;background:var(--income-light);border:1px solid var(--income-mid);border-radius:10px;padding:14px 16px;margin-bottom:16px;font-size:0.85rem;color:var(--income);line-height:1.5;">✅ Email enviado! Verifique sua caixa de entrada e clique no link para redefinir sua senha.</div>
+    <button class="btn btn-primary" id="forgot-send-btn" onclick="handleForgotPassword()">Enviar link →</button>
+    <p class="auth-switch"><a onclick="showLogin()">← Voltar para o login</a></p>
+  </div>
+
+  <!-- RESET PASSWORD -->
+  <div class="auth-card" id="reset-card" style="display:none;">
+    <div class="auth-logo">F<span>l</span>o</div>
+    <p class="auth-tagline">Seu controle financeiro pessoal.</p>
+    <h2 class="auth-title">Nova senha</h2>
+    <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:24px;line-height:1.5;">Crie uma nova senha segura para a sua conta.</p>
+    <div class="form-group">
+      <label>Nova Senha</label>
+      <div style="position:relative;display:flex;align-items:center;">
+        <input type="password" id="reset-pass" placeholder="Min. 8 caracteres" style="flex:1;" oninput="updateResetValidator()">
+        <button type="button" onclick="togglePasswordVisibility('reset-pass', this)" style="position:absolute;right:12px;background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--text-muted);padding:6px;">👀</button>
+      </div>
+      <div id="reset-validator" style="margin-top:8px;display:none;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:0.75rem;">
+        <div style="display:flex;align-items:center;gap:6px;margin:4px 0;"><span id="rcheck-length" style="color:var(--text-muted);">○</span> 8 caracteres mínimo</div>
+        <div style="display:flex;align-items:center;gap:6px;margin:4px 0;"><span id="rcheck-upper" style="color:var(--text-muted);">○</span> 1 letra maiúscula</div>
+        <div style="display:flex;align-items:center;gap:6px;margin:4px 0;"><span id="rcheck-number" style="color:var(--text-muted);">○</span> 1 número</div>
+        <div style="display:flex;align-items:center;gap:6px;margin:4px 0;"><span id="rcheck-special" style="color:var(--text-muted);">○</span> 1 caractere especial (!%&amp;@#$*?_)</div>
+      </div>
+      <p class="form-error" id="reset-pass-err"></p>
+    </div>
+    <div class="form-group">
+      <label>Confirmar Senha</label>
+      <div style="position:relative;display:flex;align-items:center;">
+        <input type="password" id="reset-confirm" placeholder="Repita a senha" style="flex:1;">
+        <button type="button" onclick="togglePasswordVisibility('reset-confirm', this)" style="position:absolute;right:12px;background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--text-muted);padding:6px;">👀</button>
+      </div>
+      <p class="form-error" id="reset-confirm-err">As senhas não coincidem.</p>
+    </div>
+    <p class="form-error" id="reset-general-err" style="margin-bottom:8px;"></p>
+    <button class="btn btn-primary" id="reset-save-btn" onclick="handleResetPassword()">Salvar nova senha →</button>
+    <p class="auth-switch"><a onclick="showLogin()">← Voltar para o login</a></p>
+  </div>
   <!-- SIGNUP -->
   <div class="auth-card" id="signup-card" style="display:none;">
     <div class="auth-logo">F<span>l</span>o</div>
@@ -157,7 +209,7 @@
       <!-- LEFT: CHART + RECENT -->
       <div style="display:flex;flex-direction:column;gap:16px;">
         <!-- CHART -->
-        <div class="card fade-in">
+        <div class="card fade-in"> 
           <div class="card-header">
             <h3 class="card-title">Atividade de 7 dias</h3>
             <div class="chart-filters">
@@ -350,13 +402,26 @@
       </div>
 
       <!-- Budget p/ cartões -->
-      <div class="card fade-in">
+      <div style="margin-bottom: 20px;" class="card fade-in">
         <div class="card-header">
           <h3 class="card-title">💳 Quanto posso gastar nos cartões?</h3>
           <button class="btn btn-sm btn-ghost" onclick="openCardBudgetModal()">Configurar cartões</button>
         </div>
         <div id="card-budget-section">
           <div class="plan-empty"><div class="ei">💳</div><p>Configure seus cartões para ver o limite disponível</p></div>
+        </div>
+      </div>
+
+      <!-- Financial Calendar -->
+      <div class="card fade-in">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <h3 class="card-title">📅 Calendário Financeiro</h3>
+          <button class="btn btn-ghost" style="font-size:0.78rem;padding:7px 14px;display:flex;align-items:center;gap:6px;" onclick="openRecurringModal()">
+            🔄 Eventos Recorrentes
+          </button>
+        </div>
+        <div id="financial-calendar" style="min-height:300px;">
+          <div class="empty-state"><p>Carregando calendário...</p></div>
         </div>
       </div>
 
@@ -384,7 +449,7 @@
       <div class="form-row">
         <div class="form-group">
           <label>Valor (R$)</label>
-          <input type="number" id="tx-amount" placeholder="0.00" min="0.01" step="0.01">
+          <input type="text" id="tx-amount" placeholder="0,00" inputmode="numeric" oninput="formatCurrencyInput(this)">
           <p class="form-error" id="tx-amount-err">Por favor, informe um valor válido.</p>
         </div>
         <div class="form-group">
@@ -487,7 +552,7 @@
 
       <div class="form-group">
         <label>Valor</label>
-        <input type="number" id="plan-amount">
+        <input type="text" id="plan-amount" placeholder="0,00" inputmode="numeric" oninput="formatCurrencyInput(this)">
         <p class="form-error" id="plan-amount-err">
           Informe um valor válido
         </p>
@@ -550,7 +615,7 @@
         </div>
         <div class="form-group" style="width:130px;margin-bottom:0;">
           <label>Limite (R$)</label>
-          <input type="number" id="new-card-limit" placeholder="0,00" min="0">
+          <input type="text" id="new-card-limit" placeholder="0,00" inputmode="numeric" oninput="formatCurrencyInput(this)">
         </div>
         <button class="btn btn-primary" style="width:auto;margin-top:0;padding:11px 16px;" onclick="addCard()">+</button>
       </div>
@@ -609,6 +674,102 @@
       <button class="btn btn-ghost" onclick="closeModal('export-modal')">Cancelar</button>
       <button class="btn btn-primary" onclick="exportToPDF()">Exportar PDF</button>
     </div>
+  </div>
+</div>
+
+<!-- DAY DETAILS MODAL -->
+<!-- RECURRING EVENTS MODAL -->
+<div class="modal-overlay" id="recurring-modal">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h3 class="modal-title">🔄 Eventos Recorrentes</h3>
+      <button class="modal-close" onclick="closeModal('recurring-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Form -->
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px;">
+        <h4 style="font-size:0.85rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:16px;">Novo Evento Recorrente</h4>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Descrição</label>
+            <input type="text" id="rec-desc" placeholder="ex: Salário, Netflix, Aluguel...">
+            <p class="form-error" id="rec-desc-err">Informe uma descrição.</p>
+          </div>
+          <div class="form-group">
+            <label>Valor (R$)</label>
+            <input type="text" id="rec-amount" placeholder="0,00" inputmode="numeric" oninput="formatCurrencyInput(this)">
+            <p class="form-error" id="rec-amount-err">Informe um valor válido.</p>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tipo</label>
+            <select id="rec-type" onchange="updateRecCategory()">
+              <option value="income">💚 Receita</option>
+              <option value="expense">🔴 Despesa</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Categoria</label>
+            <select id="rec-category">
+              <option value="">Selecionar...</option>
+            </select>
+            <p class="form-error" id="rec-cat-err">Selecione uma categoria.</p>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Repetição</label>
+            <select id="rec-freq" onchange="updateRecFreqUI()">
+              <option value="monthly">📆 Mensal</option>
+              <option value="weekly">📅 Semanal</option>
+              <option value="yearly">🗓️ Anual</option>
+            </select>
+          </div>
+          <div class="form-group" id="rec-day-group">
+            <label id="rec-day-label">Dia do mês</label>
+            <input type="number" id="rec-day" placeholder="ex: 5" min="1" max="31">
+            <p class="form-error" id="rec-day-err">Informe o dia.</p>
+          </div>
+          <div class="form-group" id="rec-weekday-group" style="display:none;">
+            <label>Dia da semana</label>
+            <select id="rec-weekday">
+              <option value="0">Domingo</option>
+              <option value="1">Segunda</option>
+              <option value="2">Terça</option>
+              <option value="3">Quarta</option>
+              <option value="4">Quinta</option>
+              <option value="5">Sexta</option>
+              <option value="6">Sábado</option>
+            </select>
+          </div>
+          <div class="form-group" id="rec-yearly-group" style="display:none;">
+            <label>Data (dia/mês)</label>
+            <input type="text" id="rec-yearly-date" placeholder="ex: 25/12">
+            <p class="form-error" id="rec-yearly-err">Formato: DD/MM</p>
+          </div>
+        </div>
+        <input type="hidden" id="rec-edit-id">
+        <div style="display:flex;gap:10px;margin-top:4px;">
+          <button class="btn btn-primary" style="flex:1;" onclick="saveRecurring()">Salvar Evento</button>
+          <button class="btn btn-ghost" id="rec-cancel-btn" style="display:none;" onclick="clearRecurringForm()">Cancelar</button>
+        </div>
+      </div>
+
+      <!-- List -->
+      <div id="recurring-list">
+        <div class="empty-state"><div class="empty-icon">🔄</div><p>Nenhum evento recorrente ainda</p></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- DAY DETAILS MODAL -->
+<div class="modal-overlay" id="day-details-modal">
+  <div class="modal" style="max-width:460px;width:calc(100% - 32px);">
+    <div class="modal-body" style="padding:24px;max-height:80vh;overflow-y:auto;"></div>
   </div>
 </div>
 

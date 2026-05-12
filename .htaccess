@@ -7,18 +7,14 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
-    
-    # Remove .html extension from URLs
+
+    # Remove .html extension (internal rewrite, sem redirect 301)
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{DOCUMENT_ROOT}/$1.html -f
     RewriteRule ^([^.]+)$ $1.html [NC,L]
-    
-    # Redirect .html files to non-.html version
-    RewriteCond %{REQUEST_URI} ^(.+)\.html$ [NC]
-    RewriteCond %{REQUEST_FILENAME} -f
-    RewriteRule ^(.+)\.html$ /$1 [R=301,L]
-    
-    # Prevent direct access to certain directories
+
+    # Bloquear pastas sensíveis
     RewriteRule ^(config|private|admin) - [F,L]
 </IfModule>
 
@@ -26,22 +22,14 @@
 # Security Headers
 # ====================================
 <IfModule mod_headers.c>
-    # Prevent Clickjacking attacks
     Header always set X-Frame-Options "SAMEORIGIN"
-    
-    # Prevent MIME type sniffing
     Header always set X-Content-Type-Options "nosniff"
-    
-    # Enable XSS Protection
     Header always set X-XSS-Protection "1; mode=block"
-    
-    # Content Security Policy (for financial apps)
-    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' fonts.googleapis.com; connect-src 'self'"
-    
-    # Referrer Policy
+
+    # CSP corrigido: fonts.gstatic.com adicionado
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com; img-src 'self' data:; font-src 'self' fonts.googleapis.com fonts.gstatic.com; connect-src 'self' https://api.resend.com https://*.supabase.co"
+
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
-    
-    # Permissions Policy
     Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
 </IfModule>
 
@@ -56,7 +44,6 @@
     AddOutputFilterByType DEFLATE text/javascript
     AddOutputFilterByType DEFLATE application/xml
     AddOutputFilterByType DEFLATE application/xhtml+xml
-    AddOutputFilterByType DEFLATE application/rss+xml
     AddOutputFilterByType DEFLATE application/json
     AddOutputFilterByType DEFLATE application/javascript
     AddOutputFilterByType DEFLATE application/x-javascript
@@ -67,28 +54,17 @@
 # ====================================
 <IfModule mod_expires.c>
     ExpiresActive On
-    
-    # Cache HTML files for 1 day
-    ExpiresByType text/html "access plus 1 day"
-    
-    # Cache CSS and JS for 30 days
+    ExpiresByType text/html "access plus 0 seconds"
     ExpiresByType text/css "access plus 30 days"
     ExpiresByType application/javascript "access plus 30 days"
     ExpiresByType text/javascript "access plus 30 days"
-    
-    # Cache images for 60 days
     ExpiresByType image/jpeg "access plus 60 days"
-    ExpiresByType image/gif "access plus 60 days"
     ExpiresByType image/png "access plus 60 days"
     ExpiresByType image/svg+xml "access plus 60 days"
-    
-    # Cache fonts for 1 year
     ExpiresByType font/ttf "access plus 1 year"
     ExpiresByType font/otf "access plus 1 year"
     ExpiresByType font/woff "access plus 1 year"
     ExpiresByType font/woff2 "access plus 1 year"
-    
-    # Default
     ExpiresDefault "access plus 2 days"
 </IfModule>
 
@@ -109,41 +85,22 @@
 </IfModule>
 
 # ====================================
-# Protect Sensitive Files & Directories
+# Protect Sensitive Files
 # ====================================
-# Block access to .htaccess
 <Files .htaccess>
     Order allow,deny
     Deny from all
 </Files>
 
-# Block access to sensitive files
 <FilesMatch "\.(env|json|lock|md|sql|sqlite|db)$">
     Order allow,deny
     Deny from all
 </FilesMatch>
 
-# Prevent directory listing
 Options -Indexes
 
 # ====================================
-# Error & Custom Pages
-# ====================================
-# Uncomment to set custom error pages
-# ErrorDocument 404 /404.html
-# ErrorDocument 500 /500.html
-
-# ====================================
-# HTTPS Redirect (uncomment if needed)
-# ====================================
-# <IfModule mod_rewrite.c>
-#     RewriteEngine On
-#     RewriteCond %{HTTPS} off
-#     RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
-# </IfModule>
-
-# ====================================
-# ETag Configuration
+# ETag
 # ====================================
 <IfModule mod_headers.c>
     Header unset ETag

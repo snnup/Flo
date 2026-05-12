@@ -213,7 +213,121 @@ function showLogin() {
   if (document.getElementById('login-remember')) document.getElementById('login-remember').checked = false;
   document.getElementById('login-card').style.display = 'block';
   document.getElementById('signup-card').style.display = 'none';
+  document.getElementById('forgot-card').style.display = 'none';
+  document.getElementById('reset-card').style.display = 'none';
 }
+
+function showForgotPassword() {
+  document.getElementById('login-card').style.display = 'none';
+  document.getElementById('signup-card').style.display = 'none';
+  document.getElementById('reset-card').style.display = 'none';
+  document.getElementById('forgot-card').style.display = 'block';
+  document.getElementById('forgot-email').value = '';
+  document.getElementById('forgot-success').style.display = 'none';
+  document.getElementById('forgot-send-btn').style.display = 'block';
+  hide('forgot-email-err'); hide('forgot-general-err');
+}
+
+function handleForgotPassword() {
+  const email = document.getElementById('forgot-email').value.trim();
+  hide('forgot-email-err'); hide('forgot-general-err');
+  if (!email || !/\S+@\S+\.\S+/.test(email)) { show('forgot-email-err'); return; }
+
+  const user = state.users.find(u => u.email === email);
+  // Por segurança, sempre mostra sucesso mesmo se email não existir
+  if (user) {
+    // Gera token local para reset (simulado - em produção use Supabase/backend)
+    const token = btoa(`${user.id}:${Date.now()}:reset`);
+    localStorage.setItem('flo_reset_token', JSON.stringify({ token, userId: user.id, exp: Date.now() + 3600000 }));
+    console.info(`[DEV] Link de reset: ${location.origin}${location.pathname}?token=${token}&type=recovery`);
+  }
+
+  document.getElementById('forgot-success').style.display = 'block';
+  document.getElementById('forgot-send-btn').style.display = 'none';
+}
+
+function showResetPassword() {
+  document.getElementById('login-card').style.display = 'none';
+  document.getElementById('signup-card').style.display = 'none';
+  document.getElementById('forgot-card').style.display = 'none';
+  document.getElementById('reset-card').style.display = 'block';
+  document.getElementById('reset-pass').value = '';
+  document.getElementById('reset-confirm').value = '';
+  document.getElementById('reset-validator').style.display = 'none';
+  hide('reset-pass-err'); hide('reset-confirm-err'); hide('reset-general-err');
+}
+
+function updateResetValidator() {
+  const pass = document.getElementById('reset-pass').value;
+  const v = document.getElementById('reset-validator');
+  if (pass.length === 0) { v.style.display = 'none'; return; }
+  v.style.display = 'block';
+  const r = validatePassword(pass);
+  const upd = (id, ok) => {
+    const el = document.getElementById(id);
+    el.textContent = ok ? '✓' : '✕';
+    el.style.color = ok ? 'var(--income)' : 'var(--expense)';
+    el.parentElement.style.color = ok ? 'var(--income)' : 'var(--text-muted)';
+  };
+  upd('rcheck-length', r.minLength);
+  upd('rcheck-upper', r.hasUpperCase);
+  upd('rcheck-number', r.hasNumber);
+  upd('rcheck-special', r.hasSpecial);
+}
+
+function handleResetPassword() {
+  const pass = document.getElementById('reset-pass').value;
+  const confirm = document.getElementById('reset-confirm').value;
+  hide('reset-pass-err'); hide('reset-confirm-err'); hide('reset-general-err');
+  let valid = true;
+  const pv = validatePassword(pass);
+  if (!pv.isValid) {
+    showErr('reset-pass-err', 'A senha não atende aos requisitos mínimos.');
+    valid = false;
+  }
+  if (pass !== confirm) { show('reset-confirm-err'); valid = false; }
+  if (!valid) return;
+
+  // Valida token local
+  const raw = localStorage.getItem('flo_reset_token');
+  if (!raw) { showErr('reset-general-err', 'Link inválido ou expirado. Solicite um novo.'); return; }
+  const { token, userId, exp } = JSON.parse(raw);
+  const urlToken = new URLSearchParams(location.search).get('token');
+  if ((urlToken && urlToken !== token) || Date.now() > exp) {
+    showErr('reset-general-err', 'Link expirado. Solicite um novo.'); return;
+  }
+
+  // Atualiza senha no estado
+  const idx = state.users.findIndex(u => u.id === userId);
+  if (idx === -1) { showErr('reset-general-err', 'Usuário não encontrado.'); return; }
+  state.users[idx].password = pass;
+  localStorage.removeItem('flo_reset_token');
+  save();
+
+  document.getElementById('reset-save-btn').textContent = '✓ Senha atualizada!';
+  document.getElementById('reset-save-btn').style.opacity = '0.7';
+  setTimeout(() => showLogin(), 1800);
+}
+
+// Verifica token na URL ao carregar (quando usuário vem do email)
+(function checkResetToken() {
+  const params = new URLSearchParams(location.search);
+  const token = params.get('token');
+  const type = params.get('type');
+  if (token && type === 'recovery') {
+    // Valida e injeta token no localStorage para o fluxo local
+    const raw = localStorage.getItem('flo_reset_token');
+    if (raw) {
+      const stored = JSON.parse(raw);
+      if (stored.token === token && Date.now() <= stored.exp) {
+        setTimeout(() => showResetPassword(), 100);
+      }
+    } else {
+      // Token externo (ex: Supabase) — mostra tela de reset direto
+      setTimeout(() => showResetPassword(), 100);
+    }
+  }
+})();
 
 function showSignup() {
   document.getElementById('signup-name').value = '';
@@ -280,10 +394,11 @@ async function handleSignup() {
   const passwordHash = await hashPassword(pass);
   const user = { id: Date.now(), name, email, passwordHash, createdAt: new Date().toISOString() };
   state.users.push(user);
-  state.currentUser = user;
-  localStorage.setItem('flo_current', JSON.stringify(user));
   save();
-  showApp();
+  
+  // Show success and redirect to login
+  toast('Conta criada com sucesso! Faça login agora.', 'success');
+  setTimeout(() => showLogin(), 800);
 }
 
 function handleLogout() {
@@ -326,7 +441,47 @@ function updateThemeIcon() {
   if (btn) btn.textContent = state.darkMode ? '☀️' : '🌙';
 }
 
-// ─── HELPERS ──────────────────────────────────────────
+// ─── CURRENCY INPUT FORMATTING ────────────────────────
+// Formata enquanto o usuário digita: 1000 → 1.000,00
+function formatCurrencyInput(input) {
+  // Guarda posição do cursor para não pular
+  const oldLen = input.value.length;
+
+  // Remove tudo que não é dígito
+  let digits = input.value.replace(/\D/g, '');
+
+  // Sem dígitos → limpa
+  if (!digits) { input.value = ''; return; }
+
+  // Trata como centavos: últimos 2 dígitos = decimais
+  // Limita a 13 dígitos (R$ 99.999.999.999,99)
+  if (digits.length > 13) digits = digits.slice(0, 13);
+
+  const cents = parseInt(digits, 10);
+  const reais = cents / 100;
+
+  input.value = reais.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+// Lê o valor numérico de um campo formatado (ex: "1.234,56" → 1234.56)
+function parseCurrency(id) {
+  const raw = document.getElementById(id).value;
+  // Remove pontos de milhar, troca vírgula decimal por ponto
+  return parseFloat(raw.replace(/\./g, '').replace(',', '.')) || 0;
+}
+
+// Preenche um campo formatado com um número (para edição)
+function setCurrencyInput(id, value) {
+  const input = document.getElementById(id);
+  if (!value && value !== 0) { input.value = ''; return; }
+  input.value = parseFloat(value).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
 function show(id) { const el = document.getElementById(id); if (el) el.classList.add('show'); }
 function hide(id) { const el = document.getElementById(id); if (el) el.classList.remove('show'); }
 function showErr(id, msg) { const el = document.getElementById(id); if (el) { el.textContent = msg; el.classList.add('show'); } }
@@ -401,7 +556,7 @@ function openEditModal(id) {
   setTxType(tx.type);
 
   document.getElementById('tx-desc').value = tx.desc;
-  document.getElementById('tx-amount').value = tx.amount;
+  setCurrencyInput('tx-amount', tx.amount);
   document.getElementById('tx-category').value = tx.category;
   document.getElementById('tx-date').value = tx.date;
   document.getElementById('tx-time').value = tx.time || '';
@@ -417,8 +572,8 @@ function openEditModal(id) {
 }
 
 function saveTx() {
-  const desc = document.getElementById('tx-desc').value.trim();
-  const amount = parseFloat(document.getElementById('tx-amount').value);
+  const desc   = document.getElementById('tx-desc').value.trim();
+  const amount = parseCurrency('tx-amount');
   let category = document.getElementById('tx-category').value;
   const date = document.getElementById('tx-date').value;
   const time = document.getElementById('tx-time').value;
@@ -1012,11 +1167,17 @@ function renderPlanner() {
     expEl.innerHTML = expenses.map(p => planItemHTML(p)).join('');
   }
 
+  // Process recurring plans
+  processRecurringPlans();
+
   // Comparison table
   renderCompTable(plans);
 
   // Card budget
   renderCardBudget(avail);
+
+  // Financial calendar
+  setTimeout(() => renderFinancialCalendar(), 100);
 }
 
 function planItemHTML(p) {
@@ -1200,7 +1361,7 @@ function openEditPlanModal(id) {
   sel.innerHTML = '<option value="">Selecionar...</option>';
   cats.forEach(c => { const o = document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o); });
   document.getElementById('plan-desc').value = p.desc;
-  document.getElementById('plan-amount').value = p.amount;
+  setCurrencyInput('plan-amount', p.amount);
   document.getElementById('plan-category').value = p.category;
   document.getElementById('plan-recurrence').value = p.recurrence || 'once';
   populateCardDropdown(p.card || '');
@@ -1210,7 +1371,7 @@ function openEditPlanModal(id) {
 
 function savePlanItem() {
   const desc = document.getElementById('plan-desc').value.trim();
-  const amount = parseFloat(document.getElementById('plan-amount').value);
+  const amount = parseCurrency('plan-amount');
   let category = document.getElementById('plan-category').value;
   const card = document.getElementById('plan-card').value;
   const recurrence = document.getElementById('plan-recurrence').value;
@@ -1503,7 +1664,7 @@ function getPlanAvailable() {
 
 function addCard() {
   const name = document.getElementById('new-card-name').value.trim();
-  const limit = parseFloat(document.getElementById('new-card-limit').value);
+  const limit = parseCurrency('new-card-limit');
   if (!name || !limit || limit <= 0) { toast('Preencha nome e limite do cartão.', 'error'); return; }
   const cards = getCards();
   cards.push({ id: Date.now(), name, limit, userId: state.currentUser.id });
@@ -1520,6 +1681,428 @@ function deleteCard(id) {
   renderCardBudget(getPlanAvailable());
   toast('Cartão removido.', '');
 }
+
+// ─── RECURRING EVENTS STORE ───────────────────────────
+function recurringKey() { return `flo_recurring_${state.currentUser?.id || 'guest'}`; }
+
+function getAllRecurring() {
+  return JSON.parse(localStorage.getItem(recurringKey()) || '[]');
+}
+
+function saveAllRecurring(list) {
+  localStorage.setItem(recurringKey(), JSON.stringify(list));
+}
+
+// Check if a recurring event fires on a given dateStr (YYYY-MM-DD)
+function recurringMatchesDate(rec, dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  const day   = d.getDate();
+  const month = d.getMonth(); // 0-based
+  const wday  = d.getDay();   // 0=Sun
+
+  if (rec.freq === 'monthly') {
+    return day === rec.day;
+  } else if (rec.freq === 'weekly') {
+    return wday === rec.weekday;
+  } else if (rec.freq === 'yearly') {
+    return day === rec.yearDay && month === rec.yearMonth;
+  }
+  return false;
+}
+
+// Get all recurring events that match a given date
+function getRecurringForDay(dateStr) {
+  return getAllRecurring().filter(r => recurringMatchesDate(r, dateStr));
+}
+
+// ─── RECURRING MODAL UI ───────────────────────────────
+function openRecurringModal() {
+  clearRecurringForm();
+  updateRecCategory();
+  renderRecurringList();
+  openModal('recurring-modal');
+}
+
+function updateRecCategory() {
+  const type = document.getElementById('rec-type').value;
+  const cats = type === 'income' ? INCOME_CATS : EXPENSE_CATS;
+  const sel = document.getElementById('rec-category');
+  sel.innerHTML = '<option value="">Selecionar...</option>';
+  cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
+}
+
+function updateRecFreqUI() {
+  const freq = document.getElementById('rec-freq').value;
+  document.getElementById('rec-day-group').style.display     = freq === 'monthly' ? '' : 'none';
+  document.getElementById('rec-weekday-group').style.display = freq === 'weekly'  ? '' : 'none';
+  document.getElementById('rec-yearly-group').style.display  = freq === 'yearly'  ? '' : 'none';
+  document.getElementById('rec-day-label').textContent = 'Dia do mês';
+}
+
+function clearRecurringForm() {
+  document.getElementById('rec-edit-id').value = '';
+  document.getElementById('rec-desc').value = '';
+  document.getElementById('rec-amount').value = '';
+  document.getElementById('rec-type').value = 'income';
+  document.getElementById('rec-freq').value = 'monthly';
+  document.getElementById('rec-day').value = '';
+  document.getElementById('rec-weekday').value = '1';
+  document.getElementById('rec-yearly-date').value = '';
+  document.getElementById('rec-cancel-btn').style.display = 'none';
+  updateRecCategory();
+  updateRecFreqUI();
+  ['rec-desc-err','rec-amount-err','rec-cat-err','rec-day-err','rec-yearly-err'].forEach(hide);
+}
+
+function saveRecurring() {
+  const desc     = document.getElementById('rec-desc').value.trim();
+  const amount   = parseCurrency('rec-amount');
+  const type     = document.getElementById('rec-type').value;
+  const category = document.getElementById('rec-category').value;
+  const freq     = document.getElementById('rec-freq').value;
+  const editId   = parseInt(document.getElementById('rec-edit-id').value);
+  let valid = true;
+
+  ['rec-desc-err','rec-amount-err','rec-cat-err','rec-day-err','rec-yearly-err'].forEach(hide);
+  if (!desc)              { show('rec-desc-err');   valid = false; }
+  if (!amount || amount <= 0) { show('rec-amount-err'); valid = false; }
+  if (!category)          { show('rec-cat-err');    valid = false; }
+
+  let day = null, weekday = null, yearDay = null, yearMonth = null;
+
+  if (freq === 'monthly') {
+    day = parseInt(document.getElementById('rec-day').value);
+    if (!day || day < 1 || day > 31) { show('rec-day-err'); valid = false; }
+  } else if (freq === 'weekly') {
+    weekday = parseInt(document.getElementById('rec-weekday').value);
+  } else if (freq === 'yearly') {
+    const raw = document.getElementById('rec-yearly-date').value.trim();
+    const parts = raw.split('/');
+    if (parts.length !== 2 || !parts[0] || !parts[1]) { show('rec-yearly-err'); valid = false; }
+    else { yearDay = parseInt(parts[0]); yearMonth = parseInt(parts[1]) - 1; }
+  }
+
+  if (!valid) return;
+
+  const all = getAllRecurring();
+  const rec = { desc, amount, type, category, freq, day, weekday, yearDay, yearMonth,
+                userId: state.currentUser.id };
+
+  if (editId) {
+    const idx = all.findIndex(r => r.id === editId);
+    if (idx > -1) all[idx] = { ...all[idx], ...rec };
+    toast('Evento atualizado!', 'success');
+  } else {
+    rec.id = Date.now();
+    all.push(rec);
+    toast('Evento recorrente criado!', 'success');
+  }
+
+  saveAllRecurring(all);
+  clearRecurringForm();
+  renderRecurringList();
+  renderFinancialCalendar(); // refresh calendar
+}
+
+function editRecurring(id) {
+  const rec = getAllRecurring().find(r => r.id === id);
+  if (!rec) return;
+  document.getElementById('rec-edit-id').value = id;
+  document.getElementById('rec-desc').value = rec.desc;
+  setCurrencyInput('rec-amount', rec.amount);
+  document.getElementById('rec-type').value = rec.type;
+  document.getElementById('rec-freq').value = rec.freq;
+  updateRecCategory();
+  document.getElementById('rec-category').value = rec.category;
+  updateRecFreqUI();
+  if (rec.freq === 'monthly')  document.getElementById('rec-day').value = rec.day;
+  if (rec.freq === 'weekly')   document.getElementById('rec-weekday').value = rec.weekday;
+  if (rec.freq === 'yearly')   document.getElementById('rec-yearly-date').value = `${String(rec.yearDay).padStart(2,'0')}/${String(rec.yearMonth+1).padStart(2,'0')}`;
+  document.getElementById('rec-cancel-btn').style.display = '';
+  document.getElementById('rec-desc').focus();
+}
+
+function deleteRecurring(id) {
+  saveAllRecurring(getAllRecurring().filter(r => r.id !== id));
+  renderRecurringList();
+  renderFinancialCalendar();
+  toast('Evento removido.', '');
+}
+
+const FREQ_LABEL = { monthly: 'Mensal', weekly: 'Semanal', yearly: 'Anual' };
+const FREQ_ICON  = { monthly: '📆', weekly: '📅', yearly: '🗓️' };
+const WDAY_NAMES = ['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
+const MONTH_NAMES_SHORT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+function recFreqSummary(rec) {
+  if (rec.freq === 'monthly') return `Todo dia ${rec.day} do mês`;
+  if (rec.freq === 'weekly')  return `Toda ${WDAY_NAMES[rec.weekday]}-feira`;
+  if (rec.freq === 'yearly')  return `Todo ano em ${rec.yearDay}/${rec.yearMonth !== null ? MONTH_NAMES_SHORT[rec.yearMonth] : '?'}`;
+  return '';
+}
+
+function renderRecurringList() {
+  const all = getAllRecurring().filter(r => r.userId === state.currentUser.id);
+  const el = document.getElementById('recurring-list');
+  if (all.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🔄</div><p>Nenhum evento recorrente ainda</p></div>`;
+    return;
+  }
+  el.innerHTML = all.map(rec => {
+    const isInc = rec.type === 'income';
+    return `
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;transition:all 0.2s;">
+        <div style="width:38px;height:38px;border-radius:10px;background:${isInc?'var(--income-light)':'var(--expense-light)'};border:1px solid ${isInc?'var(--income-mid)':'var(--expense-mid)'};display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">${getCatIcon(rec.category, rec.type)}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:0.88rem;color:var(--text);">${escHtml(rec.desc)}</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">
+            ${FREQ_ICON[rec.freq]} ${recFreqSummary(rec)} · ${escHtml(rec.category)}
+          </div>
+        </div>
+        <div style="font-family:'Fraunces',serif;font-weight:700;font-size:0.95rem;color:${isInc?'var(--income)':'var(--expense)'};white-space:nowrap;">${isInc?'+':'-'}R$ ${rec.amount.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button class="plan-mini-btn" onclick="editRecurring(${rec.id})" title="Editar">✏️</button>
+          <button class="plan-mini-btn del" onclick="deleteRecurring(${rec.id})" title="Excluir">✕</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ─── FINANCIAL CALENDAR HELPERS ───────────────────────
+function getEventsForDay(dateStr) {
+  const events = { income: [], expense: [], cards: [] };
+  const txs   = getUserTransactions().filter(t => t.date === dateStr);
+  const plans = getPlans().filter(p => p.date === dateStr);
+  const recs  = getRecurringForDay(dateStr).filter(r => r.userId === state.currentUser?.id);
+
+  txs.filter(t => t.type === 'income').forEach(t => events.income.push({ ...t, source: 'tx' }));
+  txs.filter(t => t.type === 'expense').forEach(t => events.expense.push({ ...t, source: 'tx' }));
+
+  plans.filter(p => p.type === 'income').forEach(p => events.income.push({ ...p, source: 'plan' }));
+  plans.filter(p => p.type === 'expense').forEach(p => events.expense.push({ ...p, source: 'plan' }));
+
+  recs.filter(r => r.type === 'income').forEach(r => events.income.push({ ...r, source: 'recurring' }));
+  recs.filter(r => r.type === 'expense').forEach(r => events.expense.push({ ...r, source: 'recurring' }));
+
+  return events;
+}
+
+function getDayBalance(dateStr) {
+  const events = getEventsForDay(dateStr);
+  const income = events.income.reduce((a,b) => a + b.amount, 0);
+  const expense = events.expense.reduce((a,b) => a + b.amount, 0);
+  return { income, expense, net: income - expense };
+}
+
+function getDayBalanceClass(balance) {
+  // Returns CSS class based on balance for border and bg color
+  if (balance > 0) return 'calendar-day-positive';
+  if (balance < 0) return 'calendar-day-negative';
+  return 'calendar-day-neutral';
+}
+
+function renderFinancialCalendar() {
+  const year = plannerYear;
+  const month = plannerMonth;
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startDate = new Date(firstDay);
+  startDate.setDate(startDate.getDate() - firstDay.getDay());
+  
+  const el = document.getElementById('financial-calendar');
+  if (!el) return;
+  
+  // Day headers
+  const dayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+  let html = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:14px;margin-bottom:16px;">`;
+  dayLabels.forEach(label => {
+    html += `<div style="text-align:center;font-weight:600;color:var(--text-muted);font-size:0.75rem;padding:8px;text-transform:uppercase;letter-spacing:0.05em;">${label}</div>`;
+  });
+  html += `</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:14px;">`;
+  
+  // Day cells
+  let currentDate = new Date(startDate);
+  const today = new Date();
+  
+  while (currentDate <= lastDay || currentDate.getDay() !== 0) {
+    const dateStr = currentDate.toISOString().split('T')[0];
+    const balance = getDayBalance(dateStr);
+    const balanceClass = getDayBalanceClass(balance.net);
+    const isCurrentMonth = currentDate.getMonth() === month;
+    const isToday = currentDate.toDateString() === today.toDateString();
+    
+    const events = getEventsForDay(dateStr);
+    const hasIncome   = events.income.length > 0;
+    const hasExpense  = events.expense.length > 0;
+    const hasRecurring = [...events.income, ...events.expense].some(e => e.source === 'recurring');
+
+    // Event indicators (mini dots)
+    let indicators = '';
+    if (hasIncome)    indicators += '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--income);margin-right:3px;" title="Receita"></span>';
+    if (hasExpense)   indicators += '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--expense);margin-right:3px;" title="Despesa"></span>';
+    if (hasRecurring) indicators += '<span style="display:inline-block;font-size:0.55rem;margin-right:2px;" title="Recorrente">🔄</span>';
+
+    // Today badge
+    const todayClass = isToday ? 'calendar-day-today' : '';
+    const todayBadge = isToday ? `<div style="position:absolute;top:4px;right:6px;background:var(--accent);color:white;font-size:0.55rem;padding:3px 7px;border-radius:10px;font-weight:700;white-space:nowrap;letter-spacing:0.04em;">HOJE</div>` : '';
+    // Recurring badge (only when no today badge)
+    const recBadge = (!isToday && hasRecurring) ? `<div style="position:absolute;top:4px;right:5px;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);font-size:0.5rem;padding:2px 5px;border-radius:8px;font-weight:700;letter-spacing:0.04em;white-space:nowrap;">🔄 REC</div>` : '';
+    
+    html += `
+      <div class="calendar-day ${balanceClass} ${todayClass}" onclick="openDayDetails('${dateStr}')" style="${!isCurrentMonth?'opacity:0.4':''}">
+        ${todayBadge}${recBadge}
+        <div style="font-weight:700;font-size:1rem;color:var(--text);margin-bottom:8px;position:relative;z-index:1;line-height:1;">${currentDate.getDate()}</div>
+        <div style="display:flex;gap:3px;margin-bottom:10px;font-size:0.6rem;height:8px;align-items:center;">${indicators}</div>
+        <div style="font-size:0.75rem;color:var(--text-muted);line-height:1.4;margin-bottom:10px;display:flex;flex-direction:column;gap:3px;">
+          ${hasIncome  ? `<div style="color:var(--income);font-weight:600;font-size:0.8rem;">+${balance.income.toFixed(0)}</div>`  : ''}
+          ${hasExpense ? `<div style="color:var(--expense);font-weight:600;font-size:0.8rem;">-${balance.expense.toFixed(0)}</div>` : ''}
+        </div>
+        <div style="font-size:0.8rem;font-family:'Fraunces',serif;font-weight:700;color:${balance.net>0?'var(--income)':balance.net<0?'var(--expense)':'var(--text-muted)'};margin-top:auto;letter-spacing:0.02em;">
+          ${balance.net !== 0 ? (balance.net > 0 ? '+' : '') + balance.net.toFixed(0) : '—'}
+        </div>
+      </div>
+    `;
+    
+    currentDate.setDate(currentDate.getDate() + 1);
+    if (currentDate > lastDay && currentDate.getDay() === 0) break;
+  }
+  
+  html += `</div>`;
+  el.innerHTML = html;
+}
+
+function openDayDetails(dateStr) {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const dateObj = new Date(year, month - 1, day);
+  const dayNames = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const dayName   = dayNames[dateObj.getDay()];
+  const monthName = monthNames[month - 1];
+
+  const events  = getEventsForDay(dateStr);
+  const balance = getDayBalance(dateStr);
+  const isEmpty = events.income.length === 0 && events.expense.length === 0;
+
+  const fmtAmt = n => 'R$ ' + n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+  const srcBadge = (src) => {
+    if (src === 'recurring') return '<span style="font-size:0.62rem;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:4px;padding:2px 5px;margin-left:5px;">🔄 Recorrente</span>';
+    if (src === 'plan')      return '<span style="font-size:0.62rem;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:4px;padding:2px 5px;margin-left:5px;">📋 Planejado</span>';
+    return '';
+  };
+
+  const mkRow = (evt, type) => {
+    const isInc = type === 'income';
+    const icon  = getCatIcon(evt.category, type);
+    const name  = escHtml(evt.desc || evt.description || '—');
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${isInc?'var(--income-light)':'var(--expense-light)'};border:1px solid ${isInc?'var(--income-mid)':'var(--expense-mid)'};border-radius:10px;margin-bottom:6px;">
+        <span style="font-size:1.1rem;">${icon}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:0.85rem;font-weight:600;color:var(--text);">${name}${srcBadge(evt.source)}</div>
+          <div style="font-size:0.72rem;color:var(--text-muted);">${escHtml(evt.category||'')}</div>
+        </div>
+        <div style="font-family:'Fraunces',serif;font-size:0.95rem;font-weight:700;color:${isInc?'var(--income)':'var(--expense)'};white-space:nowrap;">${isInc?'+':'-'}${fmtAmt(evt.amount)}</div>
+      </div>`;
+  };
+
+  let html = `
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;">
+      <div>
+        <div style="font-family:'Fraunces',serif;font-size:1.6rem;font-weight:700;line-height:1;color:var(--text);">${day} ${monthName}</div>
+        <div style="font-size:0.82rem;color:var(--text-muted);margin-top:4px;">${dayName}</div>
+      </div>
+      <button style="background:var(--surface2);border:1px solid var(--border);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1rem;color:var(--text-muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;" onclick="closeModal('day-details-modal')">✕</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+      <div style="background:var(--income-light);border:1px solid var(--income-mid);border-radius:12px;padding:12px 14px;">
+        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--income);margin-bottom:4px;">Receitas</div>
+        <div style="font-family:'Fraunces',serif;font-size:1.15rem;font-weight:700;color:var(--income);">+${fmtAmt(balance.income)}</div>
+      </div>
+      <div style="background:var(--expense-light);border:1px solid var(--expense-mid);border-radius:12px;padding:12px 14px;">
+        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--expense);margin-bottom:4px;">Despesas</div>
+        <div style="font-family:'Fraunces',serif;font-size:1.15rem;font-weight:700;color:var(--expense);">-${fmtAmt(balance.expense)}</div>
+      </div>
+    </div>
+
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;">
+      <span style="font-size:0.78rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Saldo do dia</span>
+      <span style="font-family:'Fraunces',serif;font-size:1.3rem;font-weight:700;color:${balance.net>0?'var(--income)':balance.net<0?'var(--expense)':'var(--text-muted)'};">
+        ${balance.net > 0 ? '+' : ''}${fmtAmt(balance.net)}
+      </span>
+    </div>`;
+
+  if (isEmpty) {
+    html += `<div style="text-align:center;padding:24px 0;color:var(--text-muted);font-size:0.9rem;">😴 Sem movimentações neste dia</div>`;
+  } else {
+    if (events.income.length > 0) {
+      html += `<div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--income);margin-bottom:8px;">💚 Receitas (${events.income.length})</div>`;
+      html += events.income.map(e => mkRow(e, 'income')).join('');
+    }
+    if (events.expense.length > 0) {
+      html += `<div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--expense);margin-bottom:8px;${events.income.length>0?'margin-top:16px;':''}">🔴 Despesas (${events.expense.length})</div>`;
+      html += events.expense.map(e => mkRow(e, 'expense')).join('');
+    }
+  }
+
+  const modalBody = document.querySelector('#day-details-modal .modal-body');
+  if (modalBody) { modalBody.innerHTML = html; openModal('day-details-modal'); }
+}
+
+// ─── RECURRENCE AUTOMATION ────────────────────────────
+function processRecurringPlans() {
+  const plans = getPlans();
+  const today = new Date();
+  const currentMonth = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+  
+  let updated = false;
+  
+  plans.forEach(plan => {
+    if (plan.recurrence === 'monthly') {
+      const [year, month, day] = plan.date.split('-');
+      const planDate = new Date(parseInt(year), parseInt(month)-1, parseInt(day));
+      
+      // Check if plan is from a past month and create recurring for future months
+      if (planDate < today) {
+        // Find the next month where this plan should appear
+        let nextDate = new Date(today.getFullYear(), today.getMonth() + 1, parseInt(day));
+        
+        // Ensure the date is valid (handle months with fewer days)
+        while (nextDate.getDate() !== parseInt(day)) {
+          nextDate.setDate(0); // Move to last day of previous month
+        }
+        
+        const nextDateStr = nextDate.toISOString().split('T')[0];
+        
+        // Check if next month's plan already exists
+        const nextPlanExists = plans.some(p => 
+          p.desc === plan.desc && 
+          p.category === plan.category &&
+          p.amount === plan.amount &&
+          p.type === plan.type &&
+          p.date === nextDateStr
+        );
+        
+        if (!nextPlanExists) {
+          const newPlan = {
+            ...plan,
+            id: Date.now() + Math.random(),
+            date: nextDateStr,
+            realized: false
+          };
+          plans.push(newPlan);
+          updated = true;
+        }
+      }
+    }
+  });
+  
+  if (updated) {
+    savePlans(plans);
+  }
+}
+
 // ─── EVENT LISTENERS ───────────────────────────────────
 document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') handleLogin(); });
 document.getElementById('login-email').addEventListener('keydown', e => { if(e.key==='Enter') handleLogin(); });
